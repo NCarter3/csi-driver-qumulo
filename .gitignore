@@ -70,3 +70,6 @@ cscope.*
 /bazel-*
 *.pyc
 profile.cov
+
+# ctags
+/tags
