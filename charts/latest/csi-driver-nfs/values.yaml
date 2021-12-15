@@ -5,15 +5,15 @@ image:
         pullPolicy: IfNotPresent
     csiProvisioner:
         repository: k8s.gcr.io/sig-storage/csi-provisioner
-        tag: v2.1.0
+        tag: v2.2.2
         pullPolicy: IfNotPresent
     livenessProbe:
         repository: k8s.gcr.io/sig-storage/livenessprobe
-        tag: v2.3.0
+        tag: v2.5.0
         pullPolicy: IfNotPresent
     nodeDriverRegistrar:
         repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
-        tag: v2.3.0
+        tag: v2.4.0
         pullPolicy: IfNotPresent
 
 serviceAccount:
@@ -38,6 +38,28 @@ controller:
     - key: "node-role.kubernetes.io/controlplane"
       operator: "Exists"
       effect: "NoSchedule"
+  resources:
+    csiProvisioner:
+      limits:
+        cpu: 1
+        memory: 400Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    livenessProbe:
+      limits:
+        cpu: 1
+        memory: 100Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    nfs:
+      limits:
+        cpu: 1
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
 
 node:
   name: csi-nfs-node
@@ -47,6 +69,28 @@ node:
     healthPort: 29653
   tolerations:
     - operator: "Exists"
+  resources:
+    livenessProbe:
+      limits:
+        cpu: 1
+        memory: 100Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    nodeDriverRegistrar:
+      limits:
+        cpu: 1
+        memory: 100Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    nfs:
+      limits:
+        cpu: 1
+        memory: 300Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
 
 feature:
   enableFSGroupPolicy: false

@@ -49,7 +49,7 @@ var (
 func initTestController(t *testing.T) *ControllerServer {
 	var perm *uint32
 	mounter := &mount.FakeMounter{MountPoints: []mount.MountPoint{}}
-	driver := NewNFSdriver("", "", "", perm)
+	driver := NewDriver("", "", "", perm)
 	driver.ns = NewNodeServer(driver, mounter)
 	cs := NewControllerServer(driver)
 	cs.workingMountDir = "/tmp"
@@ -328,6 +328,13 @@ func TestControllerGetCapabilities(t *testing.T) {
 						Type: &csi.ControllerServiceCapability_Rpc{
 							Rpc: &csi.ControllerServiceCapability_RPC{
 								Type: csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
+							},
+						},
+					},
+					{
+						Type: &csi.ControllerServiceCapability_Rpc{
+							Rpc: &csi.ControllerServiceCapability_RPC{
+								Type: csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
 							},
 						},
 					},

@@ -3,26 +3,19 @@
 
 ### Overview
 
-This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System) [CSI](https://kubernetes-csi.github.io/docs/) Driver.
-Currently it implements bare minimum of the [CSI spec](https://github.com/container-storage-interface/spec) and is in the alpha state 
-of the development.
+This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System) [CSI](https://kubernetes-csi.github.io/docs/) driver, csi plugin name: `nfs.csi.k8s.io`. This driver requires existing and already configured NFSv3 or NFSv4 server, it supports dynamic provisioning of Persistent Volumes via Persistent Volume Claims by creating a new sub directory under NFS server.
 
-#### CSI Feature matrix
+### Project status: Beta
 
-| **nfs.csi.k8s.io** | K8s version compatibility | CSI versions compatibility | Dynamic Provisioning | Resize | Snapshots | Raw Block | AccessModes              | Status                                                                       |
-|--------------------|---------------------------|----------------------------|----------------------|--------|-----------|-----------|--------------------------|------------------------------------------------------------------------------|
-|master              | 1.16 +                    | v1.0 +                     |  yes                 |  no    |  no       |  no       | Read/Write Multiple Pods | Alpha                                                                        |
-|v2.0.0              | 1.14 +                    | v1.0 +                     |  no                  |  no    |  no       |  no       | Read/Write Multiple Pods | Alpha                                                                        |
-
-### Requirements
-
-The CSI NFS driver requires Kubernetes cluster of version 1.14 or newer and 
-preexisting NFS server, whether it is deployed on cluster or provisioned 
-independently. The plugin itself provides only a communication layer between 
-resources in the cluser and the NFS server.
+### Container Images & Kubernetes Compatibility:
+|driver version  | supported k8s version | status |
+|----------------|-----------------------|--------|
+|master branch   | 1.19+                 | beta   |
+|v3.0.0          | 1.19+                 | beta   |
+|v2.0.0          | 1.14+                 | alpha  |
 
 ### Install driver on a Kubernetes cluster
- - install by [kubectl](./docs/install-csi-driver.md)
+ - install by [kubectl](./docs/install-nfs-csi-driver.md)
  - install by [helm charts](./charts)
 
 ### Driver parameters

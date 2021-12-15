@@ -21,13 +21,14 @@ if [[ "$#" -lt 1 ]]; then
   exit 1
 fi
 
+export OUTPUT_TYPE=registry
 export REGISTRY_NAME="$1"
 export REGISTRY=$REGISTRY_NAME.azurecr.io
 export IMAGENAME=public/k8s/csi/nfs-csi
 export CI=1
 export PUBLISH=1
 az acr login --name $REGISTRY_NAME
-make container push push-latest
+make && make container push push-latest
 
 echo "sleep 60s ..."
 sleep 60
