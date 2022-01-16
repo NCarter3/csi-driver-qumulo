@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package nfs
+package qumulo
 
 import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -58,6 +58,13 @@ func (ids *IdentityServer) GetPluginCapabilities(ctx context.Context, req *csi.G
 				Type: &csi.PluginCapability_Service_{
 					Service: &csi.PluginCapability_Service{
 						Type: csi.PluginCapability_Service_CONTROLLER_SERVICE,
+					},
+				},
+			},
+			{
+				Type: &csi.PluginCapability_VolumeExpansion_{
+					VolumeExpansion: &csi.PluginCapability_VolumeExpansion{
+						Type: csi.PluginCapability_VolumeExpansion_ONLINE,
 					},
 				},
 			},

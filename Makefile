@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CMDS=nfsplugin
+CMDS=qumuloplugin
 DEPLOY_FOLDER = ./deploy
-CMDS=nfsplugin
-PKG = github.com/kubernetes-csi/csi-driver-nfs
+CMDS=qumuloplugin
+PKG = github.com/kubernetes-csi/csi-driver-qumulo
 GINKGO_FLAGS = -ginkgo.v
 GO111MODULE = on
 GOPATH ?= $(shell go env GOPATH)
@@ -28,7 +28,7 @@ include release-tools/build.make
 GIT_COMMIT = $(shell git rev-parse HEAD)
 BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 IMAGE_VERSION ?= v3.1.0
-LDFLAGS = -X ${PKG}/pkg/nfs.driverVersion=${IMAGE_VERSION} -X ${PKG}/pkg/nfs.gitCommit=${GIT_COMMIT} -X ${PKG}/pkg/nfs.buildDate=${BUILD_DATE}
+LDFLAGS = -X ${PKG}/pkg/qumulo.driverVersion=${IMAGE_VERSION} -X ${PKG}/pkg/qumulo.gitCommit=${GIT_COMMIT} -X ${PKG}/pkg/qumulo.buildDate=${BUILD_DATE}
 EXT_LDFLAGS = -s -w -extldflags "-static"
 # Use a custom version for E2E tests if we are testing in CI
 ifdef CI
@@ -36,13 +36,13 @@ ifndef PUBLISH
 override IMAGE_VERSION := e2e-$(GIT_COMMIT)
 endif
 endif
-IMAGENAME ?= nfsplugin
+IMAGENAME ?= qumuloplugin
 REGISTRY ?= andyzhangx
 REGISTRY_NAME ?= $(shell echo $(REGISTRY) | sed "s/.azurecr.io//g")
 IMAGE_TAG = $(REGISTRY)/$(IMAGENAME):$(IMAGE_VERSION)
 IMAGE_TAG_LATEST = $(REGISTRY)/$(IMAGENAME):latest
 
-E2E_HELM_OPTIONS ?= --set image.nfs.repository=$(REGISTRY)/$(IMAGENAME) --set image.nfs.tag=$(IMAGE_VERSION) --set image.nfs.pullPolicy=Always
+E2E_HELM_OPTIONS ?= --set image.qumulo.repository=$(REGISTRY)/$(IMAGENAME) --set image.qumulo.tag=$(IMAGE_VERSION) --set image.qumulo.pullPolicy=Always
 E2E_HELM_OPTIONS += ${EXTRA_HELM_OPTIONS}
 
 # Output type of docker buildx build
@@ -53,7 +53,7 @@ ALL_OS_ARCH = linux-arm64 linux-arm-v7 linux-amd64
 
 .EXPORT_ALL_VARIABLES:
 
-all: nfs
+all: qumulo
 
 .PHONY: verify
 verify: unit-test
@@ -64,43 +64,43 @@ unit-test:
 	go test -covermode=count -coverprofile=profile.cov ./pkg/... -v
 
 .PHONY: sanity-test
-sanity-test: nfs
+sanity-test: qumulo
 	./test/sanity/run-test.sh
 
 .PHONY: integration-test
-integration-test: nfs
+integration-test: qumulo
 	./test/integration/run-test.sh
 
 .PHONY: local-build-push
-local-build-push: nfs
-	docker build -t $(LOCAL_USER)/nfsplugin:latest .
-	docker push $(LOCAL_USER)/nfsplugin
+local-build-push: qumulo
+	docker build -t $(LOCAL_USER)/qumuloplugin:latest .
+	docker push $(LOCAL_USER)/qumuloplugin
 
 .PHONY: local-k8s-install
 local-k8s-install:
-	echo "Instlling locally"
-	kubectl apply -f $(DEPLOY_FOLDER)/rbac-csi-nfs-controller.yaml
-	kubectl apply -f $(DEPLOY_FOLDER)/csi-nfs-driverinfo.yaml
-	kubectl apply -f $(DEPLOY_FOLDER)/csi-nfs-controller.yaml
-	kubectl apply -f $(DEPLOY_FOLDER)/csi-nfs-node.yaml
+	echo "Installing locally"
+	kubectl apply -f $(DEPLOY_FOLDER)/rbac-csi-qumulo-controller.yaml
+	kubectl apply -f $(DEPLOY_FOLDER)/csi-qumulo-driverinfo.yaml
+	kubectl apply -f $(DEPLOY_FOLDER)/csi-qumulo-controller.yaml
+	kubectl apply -f $(DEPLOY_FOLDER)/csi-qumulo-node.yaml
 	echo "Successfully installed"
 
 .PHONY: local-k8s-uninstall
 local-k8s-uninstall:
-	echo "Uninstalling driver"
-	kubectl delete -f $(DEPLOY_FOLDER)/csi-nfs-controller.yaml --ignore-not-found
-	kubectl delete -f $(DEPLOY_FOLDER)/csi-nfs-node.yaml --ignore-not-found
-	kubectl delete -f $(DEPLOY_FOLDER)/csi-nfs-driverinfo.yaml --ignore-not-found
-	kubectl delete -f $(DEPLOY_FOLDER)/rbac-csi-nfs-controller.yaml --ignore-not-found
-	echo "Uninstalled NFS driver"
+	echo "Uninstalling Qumulo driver"
+	kubectl delete -f $(DEPLOY_FOLDER)/csi-qumulo-controller.yaml --ignore-not-found
+	kubectl delete -f $(DEPLOY_FOLDER)/csi-qumulo-node.yaml --ignore-not-found
+	kubectl delete -f $(DEPLOY_FOLDER)/csi-qumulo-driverinfo.yaml --ignore-not-found
+	kubectl delete -f $(DEPLOY_FOLDER)/rbac-csi-qumulo-controller.yaml --ignore-not-found
+	echo "Uninstalled Qumulo driver"
 
-.PHONY: nfs
-nfs:
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/${ARCH}/nfsplugin ./cmd/nfsplugin
+.PHONY: qumulo
+qumulo:
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/${ARCH}/qumuloplugin ./cmd/qumuloplugin
 
-.PHONY: nfs-armv7
-nfs-armv7:
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/arm/v7/nfsplugin ./cmd/nfsplugin
+.PHONY: qumulo-armv7
+qumulo-armv7:
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/arm/v7/qumuloplugin ./cmd/qumuloplugin
 
 .PHONY: container-build
 container-build:
@@ -121,10 +121,10 @@ container:
 	docker run --privileged --rm tonistiigi/binfmt --uninstall qemu-aarch64
 	docker run --rm --privileged tonistiigi/binfmt --install all
 	for arch in $(ALL_ARCH.linux); do \
-		ARCH=$${arch} $(MAKE) nfs; \
+		ARCH=$${arch} $(MAKE) qumulo; \
 		ARCH=$${arch} $(MAKE) container-build; \
 	done
-	$(MAKE) nfs-armv7
+	$(MAKE) qumulo-armv7
 	$(MAKE) container-linux-armv7
 
 .PHONY: push
@@ -148,9 +148,9 @@ else
 	docker push $(IMAGE_TAG_LATEST)
 endif
 
-.PHONY: install-nfs-server
-install-nfs-server:
-	kubectl apply -f ./deploy/example/nfs-provisioner/nfs-server.yaml
+.PHONY: install-qumulo-server
+install-qumulo-server:
+	kubectl apply -f ./deploy/example/qumulo-provisioner/qumulo-server.yaml
 
 .PHONY: install-helm
 install-helm:
@@ -159,14 +159,14 @@ install-helm:
 .PHONY: e2e-bootstrap
 e2e-bootstrap: install-helm
 	OUTPUT_TYPE=registry $(MAKE) container push
-	helm install csi-driver-nfs ./charts/latest/csi-driver-nfs --namespace kube-system --wait --timeout=15m -v=5 --debug \
+	helm install csi-driver-qumulo ./charts/latest/csi-driver-qumulo --namespace kube-system --wait --timeout=15m -v=5 --debug \
 		${E2E_HELM_OPTIONS} \
 		--set controller.logLevel=8 \
 		--set node.logLevel=8
 
 .PHONY: e2e-teardown
 e2e-teardown:
-	helm delete csi-driver-nfs --namespace kube-system
+	helm delete csi-driver-qumulo --namespace kube-system
 
 .PHONY: e2e-test
 e2e-test:

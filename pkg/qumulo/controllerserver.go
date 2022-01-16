@@ -14,13 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package nfs
+package qumulo
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -31,46 +31,59 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// XXX scott:
+// o add copyright to all files
+// o cache connections? 1 user at a time - could use auth file too
+// o error type/code for fmt.Errorf uses
+// o use req capacity for quota, if not zero
+// o gen exports? so we get capacity locally in pods with fsstat
+// o relative exports and stuff - assume / access for now
+
 // ControllerServer controller server setting
 type ControllerServer struct {
 	Driver *Driver
-	// Working directory for the provisioner to temporarily mount nfs shares at
-	workingMountDir string
 }
 
-// nfsVolume is an internal representation of a volume
-// created by the provisioner.
-type nfsVolume struct {
+func createConnection(server string, restPort int, secrets map[string]string) (*Connection, error) {
+	username := secrets["username"]
+	password := secrets["password"]
+
+	if username == "" || password == "" {
+		return nil, status.Error(codes.Unauthenticated, "username and password secrets missing")
+	}
+
+	c := MakeConnection(server, restPort, username, password)
+
+	return &c, nil
+}
+
+// An internal representation of a volume created by the provisioner.
+type qumuloVolume struct {
 	// Volume id
 	id string
-	// Address of the NFS server.
-	// Matches paramServer.
+
+	// Address of the cluster (paramServer).
 	server string
-	// Base directory of the NFS server to create volumes under
-	// Matches paramShare.
+
+	// REST API port on cluster (paramRestPort).
+	restPort int
+
+	// Base directory on the cluster to create volumes under (paramShare).
 	baseDir string
-	// Subdirectory of the NFS server to create volumes under
+
+	// Volume direcotry (from req name)
 	subDir string
-	// size of volume
+
+	// size of volume (from req capacity)
 	size int64
 }
-
-// Ordering of elements in the CSI volume id.
-// ID is of the form {server}/{baseDir}/{subDir}.
-// TODO: This volume id format limits baseDir and
-// subDir to only be one directory deep.
-// Adding a new element should always go at the end
-// before totalIDElements
-const (
-	idServer = iota
-	idBaseDir
-	idSubDir
-	totalIDElements // Always last
-)
 
 // CreateVolume create a volume
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	name := req.GetName()
+
+	klog.Infof("SCOTT CREATE: %s", name)
+
 	if len(name) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "CreateVolume name must be provided")
 	}
@@ -79,7 +92,10 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	reqCapacity := req.GetCapacityRange().GetRequiredBytes()
-	nfsVol, err := cs.newNFSVolume(name, reqCapacity, req.GetParameters())
+
+	klog.Infof("SCOTT req %v", req)
+
+	qVol, err := cs.newQumuloVolume(name, reqCapacity, req.GetParameters())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -88,27 +104,34 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if len(req.GetVolumeCapabilities()) > 0 {
 		volCap = req.GetVolumeCapabilities()[0]
 	}
-	// Mount nfs base share so we can create a subdirectory
-	if err = cs.internalMount(ctx, nfsVol, volCap); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
-	}
-	defer func() {
-		if err = cs.internalUnmount(ctx, nfsVol); err != nil {
-			klog.Warningf("failed to unmount nfs server: %v", err.Error())
-		}
-	}()
+	klog.Infof("SCOTT volCap %v", volCap)
 
-	// Create subdirectory under base-dir
-	// TODO: revisit permissions
-	internalVolumePath := cs.getInternalVolumePath(nfsVol)
-	if err = os.Mkdir(internalVolumePath, 0777); err != nil && !os.IsExist(err) {
-		return nil, status.Errorf(codes.Internal, "failed to make subdirectory: %v", err.Error())
+	secrets := req.GetSecrets()
+	klog.Infof("SCOTT secrets %v", secrets)
+
+	connection, err := createConnection(qVol.server, qVol.restPort, secrets)
+	if err != nil {
+		return nil, err
 	}
-	// Reset directory permissions because of umask problems
-	if err = os.Chmod(internalVolumePath, 0777); err != nil {
-		klog.Warningf("failed to chmod subdirectory: %v", err.Error())
+
+	// XXX scott: basedir
+	id, err := connection.CreateDir("/", name)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create volume dir: %v", err.Error())
 	}
-	return &csi.CreateVolumeResponse{Volume: cs.nfsVolToCSI(nfsVol)}, nil
+
+	// XXX scott: this can overflow? stupid golang
+	err = connection.CreateQuota(id, uint64(reqCapacity))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to set quota on ... : %v", err.Error())
+	}
+
+
+	// XXX scott: handle exists
+
+	// XXX scott: chmod 0777 new directory?
+
+	return &csi.CreateVolumeResponse{Volume: cs.qumuloVolumeToCSIVolume(qVol)}, nil
 }
 
 // DeleteVolume delete a volume
@@ -117,29 +140,30 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "volume id is empty")
 	}
-	nfsVol, err := cs.getNfsVolFromID(volumeID)
+	klog.Infof("SCOTT DELETE: %s", volumeID)
+	qVol, err := cs.getQumuloVolumeFromID(volumeID)
 	if err != nil {
 		// An invalid ID should be treated as doesn't exist
-		klog.Warningf("failed to get nfs volume for volume id %v deletion: %v", volumeID, err)
+		klog.Warningf("failed to get Qumulo volume for volume id %v deletion: %v", volumeID, err)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
-	// Mount nfs base share so we can delete the subdirectory
-	if err = cs.internalMount(ctx, nfsVol, nil); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to mount nfs server: %v", err.Error())
+	secrets := req.GetSecrets()
+	klog.Infof("SCOTT secrets %v", secrets)
+
+	// XXX scott rest port
+	connection, err := createConnection(qVol.server, 18154, secrets)
+	if err != nil {
+		return nil, err
 	}
-	defer func() {
-		if err = cs.internalUnmount(ctx, nfsVol); err != nil {
-			klog.Warningf("failed to unmount nfs server: %v", err.Error())
-		}
-	}()
 
-	// Delete subdirectory under base-dir
-	internalVolumePath := cs.getInternalVolumePath(nfsVol)
+	path := cs.getVolumeSharePath(qVol)
+	klog.V(2).Infof("Removing subdirectory at %v with tree delete", path)
 
-	klog.V(2).Infof("Removing subdirectory at %v", internalVolumePath)
-	if err = os.RemoveAll(internalVolumePath); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to delete subdirectory: %v", err.Error())
+	// XXX scott: in function, allow ENOENT in resolve and delete
+	err = connection.TreeDeleteCreate(path)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to tree delete subdirectory: %v", err.Error())
 	}
 
 	return &csi.DeleteVolumeResponse{}, nil
@@ -198,7 +222,46 @@ func (cs *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 }
 
 func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
+
+	volumeID := req.GetVolumeId()
+	if volumeID == "" {
+		return nil, status.Error(codes.InvalidArgument, "volume id is empty")
+	}
+
+	klog.Infof("SCOTT EXPAND: %s", volumeID)
+
+	qVol, err := cs.getQumuloVolumeFromID(volumeID)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "Volume not found %q", volumeID)
+	}
+
+	reqCapacity := req.GetCapacityRange().GetRequiredBytes()
+	klog.Infof("SCOTT reqCapacity %v", reqCapacity)
+
+	secrets := req.GetSecrets()
+	klog.Infof("SCOTT secrets %v", secrets)
+
+	connection, err := createConnection(qVol.server, qVol.restPort, secrets)
+	if err != nil {
+		return nil, err
+	}
+
+	// XXX scott: basedir
+	id, err := connection.ResolvePath("/" + qVol.subDir)
+	if err != nil {
+		return nil, err // XXX
+	}
+
+	// XXX scott: this can overflow? stupid golang
+	err = connection.UpdateQuota(id, uint64(reqCapacity))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to set quota on ... : %v", err.Error())
+	}
+
+	// XXX ExpandInUsePersistentVolumes required somewhere
+
+	//return nil, status.Error(codes.Unimplemented, "")
+	return &csi.ControllerExpandVolumeResponse{CapacityBytes: reqCapacity, NodeExpansionRequired: false}, nil
 }
 
 func (cs *ControllerServer) validateVolumeCapabilities(caps []*csi.VolumeCapability) error {
@@ -236,51 +299,19 @@ func (cs *ControllerServer) validateVolumeCapability(c *csi.VolumeCapability) er
 	return nil
 }
 
-// Mount nfs server at base-dir
-func (cs *ControllerServer) internalMount(ctx context.Context, vol *nfsVolume, volCap *csi.VolumeCapability) error {
-	sharePath := filepath.Join(string(filepath.Separator) + vol.baseDir)
-	targetPath := cs.getInternalMountPath(vol)
+// Volume ID formats:
+// v1:server:restPort//baseDir//name
 
-	if volCap == nil {
-		volCap = &csi.VolumeCapability{
-			AccessType: &csi.VolumeCapability_Mount{
-				Mount: &csi.VolumeCapability_MountVolume{},
-			},
-		}
-	}
-
-	klog.V(4).Infof("internally mounting %v:%v at %v", vol.server, sharePath, targetPath)
-	_, err := cs.Driver.ns.NodePublishVolume(ctx, &csi.NodePublishVolumeRequest{
-		TargetPath: targetPath,
-		VolumeContext: map[string]string{
-			paramServer: vol.server,
-			paramShare:  sharePath,
-		},
-		VolumeCapability: volCap,
-		VolumeId:         vol.id,
-	})
-	return err
-}
-
-// Unmount nfs server at base-dir
-func (cs *ControllerServer) internalUnmount(ctx context.Context, vol *nfsVolume) error {
-	targetPath := cs.getInternalMountPath(vol)
-
-	// Unmount nfs server at base-dir
-	klog.V(4).Infof("internally unmounting %v", targetPath)
-	_, err := cs.Driver.ns.NodeUnpublishVolume(ctx, &csi.NodeUnpublishVolumeRequest{
-		VolumeId:   vol.id,
-		TargetPath: cs.getInternalMountPath(vol),
-	})
-	return err
-}
-
-// Convert VolumeCreate parameters to an nfsVolume
-func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[string]string) (*nfsVolume, error) {
+func (cs *ControllerServer) newQumuloVolume(name string, size int64, params map[string]string) (*qumuloVolume, error) {
 	var (
-		server  string
-		baseDir string
+		server               string
+		baseDir              string
+		restPort             int
+		err                  error
 	)
+
+	// Default cluster rest port
+	restPort = 8000
 
 	// Validate parameters (case-insensitive).
 	// TODO do more strict validation.
@@ -290,6 +321,11 @@ func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[str
 			server = v
 		case paramShare:
 			baseDir = v
+		case paramRestPort:
+			restPort, err = strconv.Atoi(v)
+			if err != nil {
+				return nil, fmt.Errorf("invalid port %q", v)
+			}
 		default:
 			return nil, fmt.Errorf("invalid parameter %q", k)
 		}
@@ -303,44 +339,26 @@ func (cs *ControllerServer) newNFSVolume(name string, size int64, params map[str
 		return nil, fmt.Errorf("%v is a required parameter", paramShare)
 	}
 
-	vol := &nfsVolume{
-		server:  server,
-		baseDir: baseDir,
-		subDir:  name,
-		size:    size,
+	id := "v1:" + server + ":" + strconv.Itoa(restPort) + "//" + baseDir + "//" + name
+
+	vol := &qumuloVolume{
+		id:                   id,
+		server:               server,
+		restPort:             restPort,
+		baseDir:              baseDir,
+		subDir:               name,
+		size:                 size,
 	}
-	vol.id = cs.getVolumeIDFromNfsVol(vol)
 
 	return vol, nil
 }
 
-// Get working directory for CreateVolume and DeleteVolume
-func (cs *ControllerServer) getInternalMountPath(vol *nfsVolume) string {
-	// use default if empty
-	if cs.workingMountDir == "" {
-		cs.workingMountDir = "/tmp"
-	}
-	return filepath.Join(cs.workingMountDir, vol.subDir)
-}
-
-// Get internal path where the volume is created
-// The reason why the internal path is "workingDir/subDir/subDir" is because:
-//   * the semantic is actually "workingDir/volId/subDir" and volId == subDir.
-//   * we need a mount directory per volId because you can have multiple
-//     CreateVolume calls in parallel and they may use the same underlying share.
-//     Instead of refcounting how many CreateVolume calls are using the same
-//     share, it's simpler to just do a mount per request.
-func (cs *ControllerServer) getInternalVolumePath(vol *nfsVolume) string {
-	return filepath.Join(cs.getInternalMountPath(vol), vol.subDir)
-}
-
 // Get user-visible share path for the volume
-func (cs *ControllerServer) getVolumeSharePath(vol *nfsVolume) string {
+func (cs *ControllerServer) getVolumeSharePath(vol *qumuloVolume) string {
 	return filepath.Join(string(filepath.Separator), vol.baseDir, vol.subDir)
 }
 
-// Convert into nfsVolume into a csi.Volume
-func (cs *ControllerServer) nfsVolToCSI(vol *nfsVolume) *csi.Volume {
+func (cs *ControllerServer) qumuloVolumeToCSIVolume(vol *qumuloVolume) *csi.Volume {
 	return &csi.Volume{
 		CapacityBytes: 0, // by setting it to zero, Provisioner will use PVC requested size as PV size
 		VolumeId:      vol.id,
@@ -351,27 +369,23 @@ func (cs *ControllerServer) nfsVolToCSI(vol *nfsVolume) *csi.Volume {
 	}
 }
 
-// Given a nfsVolume, return a CSI volume id
-func (cs *ControllerServer) getVolumeIDFromNfsVol(vol *nfsVolume) string {
-	idElements := make([]string, totalIDElements)
-	idElements[idServer] = strings.Trim(vol.server, "/")
-	idElements[idBaseDir] = strings.Trim(vol.baseDir, "/")
-	idElements[idSubDir] = strings.Trim(vol.subDir, "/")
-	return strings.Join(idElements, "/")
-}
-
-// Given a CSI volume id, return a nfsVolume
-func (cs *ControllerServer) getNfsVolFromID(id string) (*nfsVolume, error) {
-	volRegex := regexp.MustCompile("^([^/]+)/(.*)/([^/]+)$")
+func (cs *ControllerServer) getQumuloVolumeFromID(id string) (*qumuloVolume, error) {
+	volRegex := regexp.MustCompile("^v1:([^:]+):([0-9]+)//(.*)//([^/]+)$")
 	tokens := volRegex.FindStringSubmatch(id)
 	if tokens == nil {
-		return nil, fmt.Errorf("Could not split %q into server, baseDir and subDir", id)
+		return nil, fmt.Errorf("Could not decode volume ID %q", id)
 	}
 
-	return &nfsVolume{
-		id:      id,
-		server:  tokens[1],
-		baseDir: tokens[2],
-		subDir:  tokens[3],
+	restPort, err := strconv.Atoi(tokens[2])
+	if err != nil {
+		return nil, fmt.Errorf("invalid port %q", id)
+	}
+
+	return &qumuloVolume{
+		id:       id,
+		server:   tokens[1],
+		restPort: restPort,
+		baseDir:  tokens[3],
+		subDir:   tokens[4],
 	}, nil
 }

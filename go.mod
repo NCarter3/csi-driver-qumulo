@@ -1,4 +1,4 @@
-module github.com/kubernetes-csi/csi-driver-nfs
+module github.com/kubernetes-csi/csi-driver-qumulo
 
 go 1.16
 

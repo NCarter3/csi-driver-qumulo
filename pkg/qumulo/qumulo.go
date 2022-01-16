@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package nfs
+package qumulo
 
 import (
 	"fmt"
@@ -42,9 +42,14 @@ type Driver struct {
 }
 
 const (
-	DefaultDriverName = "nfs.csi.k8s.io"
-	// Address of the NFS server
+	DefaultDriverName = "qumulo.csi.k8s.io"
+
+	// Address of the cluster.
 	paramServer = "server"
+
+	// REST API port on cluster.
+	paramRestPort = "restport"
+
 	// Base directory of the NFS server to create volumes under.
 	// The base directory must be a direct child of the root directory.
 	// The root directory is omitted from the string, for example:
@@ -78,6 +83,7 @@ func NewDriver(nodeID, driverName, endpoint string, perm *uint32) *Driver {
 	n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
+		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 	})
 
 	n.AddNodeServiceCapabilities([]csi.NodeServiceCapability_RPC_Type{

@@ -13,11 +13,11 @@ spec:
     - hard
     - nfsvers=4.1
   csi:
-    driver: nfs.csi.k8s.io
+    driver: qumulo.csi.k8s.io
     readOnly: false
     volumeHandle: unique-volumeid  # make sure it's a unique id in the cluster
     volumeAttributes:
-      server: nfs-server.default.svc.cluster.local
+      server: qumulo-server.default.svc.cluster.local
       share: /
 ---
 kind: PersistentVolumeClaim
@@ -36,7 +36,7 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx-nfs-example
+  name: nginx-qumulo-example
 spec:
   containers:
     - image: nginx

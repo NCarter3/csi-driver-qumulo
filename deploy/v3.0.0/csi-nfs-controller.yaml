@@ -2,21 +2,21 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: csi-nfs-controller
+  name: csi-qumulo-controller
   namespace: kube-system
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: csi-nfs-controller
+      app: csi-qumulo-controller
   template:
     metadata:
       labels:
-        app: csi-nfs-controller
+        app: csi-qumulo-controller
     spec:
       hostNetwork: true  # controller also needs to mount nfs to create dir
       dnsPolicy: ClusterFirstWithHostNet
-      serviceAccountName: csi-nfs-controller-sa
+      serviceAccountName: csi-qumulo-controller-sa
       nodeSelector:
         kubernetes.io/os: linux  # add "kubernetes.io/role: master" to run controller on master node
       priorityClassName: system-cluster-critical
@@ -64,8 +64,8 @@ spec:
             requests:
               cpu: 10m
               memory: 20Mi
-        - name: nfs
-          image: mcr.microsoft.com/k8s/csi/nfs-csi:v3.0.0
+        - name: qumulo
+          image: mcr.microsoft.com/k8s/csi/qumulo-csi:v3.0.0
           securityContext:
             privileged: true
             capabilities:

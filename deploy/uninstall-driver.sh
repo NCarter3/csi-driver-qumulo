@@ -21,7 +21,7 @@ if [[ "$#" -gt 0 ]]; then
   ver="$1"
 fi
 
-repo="https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/$ver/deploy"
+repo="https://raw.githubusercontent.com/kubernetes-csi/csi-driver-qumulo/$ver/deploy"
 if [[ "$#" -gt 1 ]]; then
   if [[ "$2" == *"local"* ]]; then
     echo "use local deploy"
@@ -33,9 +33,9 @@ if [ $ver != "master" ]; then
   repo="$repo/$ver"
 fi
 
-echo "Uninstalling NFS driver, version: $ver ..."
-kubectl delete -f $repo/csi-nfs-controller.yaml --ignore-not-found
-kubectl delete -f $repo/csi-nfs-node.yaml --ignore-not-found
-kubectl delete -f $repo/csi-nfs-driverinfo.yaml --ignore-not-found
-kubectl delete -f $repo/rbac-csi-nfs-controller.yaml --ignore-not-found
-echo 'Uninstalled NFS driver successfully.'
+echo "Uninstalling Qumulo driver, version: $ver ..."
+kubectl delete -f $repo/csi-qumulo-controller.yaml --ignore-not-found
+kubectl delete -f $repo/csi-qumulo-node.yaml --ignore-not-found
+kubectl delete -f $repo/csi-qumulo-driverinfo.yaml --ignore-not-found
+kubectl delete -f $repo/rbac-csi-qumulo-controller.yaml --ignore-not-found
+echo 'Uninstalled Qumulo driver successfully.'

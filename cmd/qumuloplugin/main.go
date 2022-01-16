@@ -22,7 +22,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/kubernetes-csi/csi-driver-nfs/pkg/nfs"
+	"github.com/kubernetes-csi/csi-driver-qumulo/pkg/qumulo"
 
 	"k8s.io/klog/v2"
 )
@@ -31,7 +31,7 @@ var (
 	endpoint   = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
 	nodeID     = flag.String("nodeid", "", "node id")
 	perm       = flag.String("mount-permissions", "", "mounted folder permissions")
-	driverName = flag.String("drivername", nfs.DefaultDriverName, "name of the driver")
+	driverName = flag.String("drivername", qumulo.DefaultDriverName, "name of the driver")
 )
 
 func init() {
@@ -62,6 +62,6 @@ func handle() {
 		parsedPerm = &permu32
 	}
 
-	d := nfs.NewDriver(*nodeID, *driverName, *endpoint, parsedPerm)
+	d := qumulo.NewDriver(*nodeID, *driverName, *endpoint, parsedPerm)
 	d.Run(false)
 }

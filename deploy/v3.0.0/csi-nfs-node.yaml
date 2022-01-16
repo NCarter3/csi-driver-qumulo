@@ -4,7 +4,7 @@
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  name: csi-nfs-node
+  name: csi-qumulo-node
   namespace: kube-system
 spec:
   updateStrategy:
@@ -13,11 +13,11 @@ spec:
     type: RollingUpdate
   selector:
     matchLabels:
-      app: csi-nfs-node
+      app: csi-qumulo-node
   template:
     metadata:
       labels:
-        app: csi-nfs-node
+        app: csi-qumulo-node
     spec:
       hostNetwork: true  # original nfs connection would be broken without hostNetwork setting
       dnsPolicy: ClusterFirstWithHostNet
@@ -59,7 +59,7 @@ spec:
             timeoutSeconds: 15
           env:
             - name: DRIVER_REG_SOCK_PATH
-              value: /var/lib/kubelet/plugins/csi-nfsplugin/csi.sock
+              value: /var/lib/kubelet/plugins/csi-qumuloplugin/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
@@ -76,13 +76,13 @@ spec:
             requests:
               cpu: 10m
               memory: 20Mi
-        - name: nfs
+        - name: qumulo
           securityContext:
             privileged: true
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: mcr.microsoft.com/k8s/csi/nfs-csi:v3.0.0
+          image: mcr.microsoft.com/k8s/csi/qumulo-csi:v3.0.0
           args:
             - "-v=5"
             - "--nodeid=$(NODE_ID)"
@@ -123,7 +123,7 @@ spec:
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/csi-nfsplugin
+            path: /var/lib/kubelet/plugins/csi-qumuloplugin
             type: DirectoryOrCreate
         - name: pods-mount-dir
           hostPath:

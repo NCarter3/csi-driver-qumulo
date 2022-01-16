@@ -18,11 +18,11 @@ FROM k8s.gcr.io/build-image/debian-base:bullseye-v1.0.0
 ARG ARCH
 
 # Copy nfsplugin from build _output directory
-COPY bin/${ARCH}/nfsplugin /nfsplugin
+COPY bin/${ARCH}/qumuloplugin /qumuloplugin
 
 RUN apt update && apt-mark unhold libcap2
 RUN clean-install ca-certificates mount nfs-common netbase
 # install updated packages to fix CVE issues
 RUN clean-install libssl1.1 libgssapi-krb5-2 libk5crypto3 libkrb5-3 libkrb5support0
 
-ENTRYPOINT ["/nfsplugin"]
+ENTRYPOINT ["/qumuloplugin"]

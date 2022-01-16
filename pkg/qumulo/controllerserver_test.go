@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package nfs
+package qumulo
 
 import (
 	"os"
@@ -52,7 +52,6 @@ func initTestController(t *testing.T) *ControllerServer {
 	driver := NewDriver("", "", "", perm)
 	driver.ns = NewNodeServer(driver, mounter)
 	cs := NewControllerServer(driver)
-	cs.workingMountDir = "/tmp"
 	return cs
 }
 
@@ -171,6 +170,7 @@ func TestCreateVolume(t *testing.T) {
 	}
 
 	for _, test := range cases {
+		workingMountDir = "/tmp" // XXX scott
 		test := test //pin
 		t.Run(test.name, func(t *testing.T) {
 			// Setup
@@ -189,7 +189,7 @@ func TestCreateVolume(t *testing.T) {
 				t.Errorf("test %q failed: got resp %+v, expected %+v", test.name, resp, test.resp)
 			}
 			if !test.expectErr {
-				info, err := os.Stat(filepath.Join(cs.workingMountDir, test.req.Name, test.req.Name))
+				info, err := os.Stat(filepath.Join(workingMountDir, test.req.Name, test.req.Name))
 				if err != nil {
 					t.Errorf("test %q failed: couldn't find volume subdirectory: %v", test.name, err)
 				}
@@ -224,11 +224,12 @@ func TestDeleteVolume(t *testing.T) {
 
 	for _, test := range cases {
 		test := test //pin
+		workingMountDir = "/tmp" // XXX scott
 		t.Run(test.desc, func(t *testing.T) {
 			// Setup
 			cs := initTestController(t)
-			_ = os.MkdirAll(filepath.Join(cs.workingMountDir, testCSIVolume), os.ModePerm)
-			_, _ = os.Create(filepath.Join(cs.workingMountDir, testCSIVolume, testCSIVolume))
+			_ = os.MkdirAll(filepath.Join(workingMountDir, testCSIVolume), os.ModePerm)
+			_, _ = os.Create(filepath.Join(workingMountDir, testCSIVolume, testCSIVolume))
 
 			// Run
 			resp, err := cs.DeleteVolume(context.TODO(), test.req)
@@ -243,7 +244,7 @@ func TestDeleteVolume(t *testing.T) {
 			if !reflect.DeepEqual(resp, test.resp) {
 				t.Errorf("test %q failed: got resp %+v, expected %+v", test.desc, resp, test.resp)
 			}
-			if _, err := os.Stat(filepath.Join(cs.workingMountDir, testCSIVolume, testCSIVolume)); test.expectedErr == nil && !os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join(workingMountDir, testCSIVolume, testCSIVolume)); test.expectedErr == nil && !os.IsNotExist(err) {
 				t.Errorf("test %q failed: expected volume subdirectory deleted, it still exists", test.desc)
 			}
 		})
@@ -371,7 +372,7 @@ func TestNfsVolFromId(t *testing.T) {
 	cases := []struct {
 		name      string
 		req       string
-		resp      *nfsVolume
+		resp      *qumuloVolume
 		expectErr bool
 	}{
 		{
@@ -389,7 +390,7 @@ func TestNfsVolFromId(t *testing.T) {
 		{
 			name: "valid request single baseDir",
 			req:  testVolumeID,
-			resp: &nfsVolume{
+			resp: &qumuloVolume{
 				id:      testVolumeID,
 				server:  testServer,
 				baseDir: testBaseDir,
@@ -400,7 +401,7 @@ func TestNfsVolFromId(t *testing.T) {
 		{
 			name: "valid request nested baseDir",
 			req:  testVolumeIDNested,
-			resp: &nfsVolume{
+			resp: &qumuloVolume{
 				id:      testVolumeIDNested,
 				server:  testServer,
 				baseDir: testBaseDirNested,
@@ -417,7 +418,7 @@ func TestNfsVolFromId(t *testing.T) {
 			cs := initTestController(t)
 
 			// Run
-			resp, err := cs.getNfsVolFromID(test.req)
+			resp, err := cs.getQumuloVolumeFromID(test.req)
 
 			// Verify
 			if !test.expectErr && err != nil {
