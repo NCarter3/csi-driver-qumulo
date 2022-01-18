@@ -170,7 +170,7 @@ func TestCreateVolume(t *testing.T) {
 	}
 
 	for _, test := range cases {
-		workingMountDir = "/tmp" // XXX scott
+		workingMountDir := "/tmp" // XXX scott
 		test := test //pin
 		t.Run(test.name, func(t *testing.T) {
 			// Setup
@@ -224,7 +224,7 @@ func TestDeleteVolume(t *testing.T) {
 
 	for _, test := range cases {
 		test := test //pin
-		workingMountDir = "/tmp" // XXX scott
+		workingMountDir := "/tmp" // XXX scott
 		t.Run(test.desc, func(t *testing.T) {
 			// Setup
 			cs := initTestController(t)

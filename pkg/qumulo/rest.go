@@ -27,11 +27,10 @@ type Connection struct {
 	client		 *http.Client
 }
 
-func MakeConnection(host string, port int, username string, password string) Connection {
+func MakeConnection(host string, port int, username string, password string, c *http.Client) Connection {
 	// XXX scott: figure out how to make this an option, or install certs somehow
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
-	c := new(http.Client)
 	c.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
@@ -80,7 +79,7 @@ func MakeRestError(status int, response []byte) RestError {
 	}
 }
 
-func (self *Connection) Login() {
+func (self *Connection) Login() error {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	loginUrl := fmt.Sprintf("https://%s:%d/v1/session/login", self.Host, self.Port)
@@ -96,11 +95,11 @@ func (self *Connection) Login() {
 
 	response, err := self.client.Post(loginUrl, "application/json", bytes.NewBuffer(json_data))
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("Login failed: %v", err);
 	}
 
 	if response.StatusCode != 200 {
-		log.Fatalf("Login failed %s", response.Status)
+		return fmt.Errorf("Login failed: %v", response.Status);
 	}
 
 	var res map[string]string
@@ -108,6 +107,8 @@ func (self *Connection) Login() {
 	json.NewDecoder(response.Body).Decode(&res)
 
 	self.token = res["bearer_token"]
+
+	return nil
 }
 
 func (self *Connection) do(verb string, uri string, body []byte) ([]byte, error) {
@@ -161,7 +162,10 @@ func (self *Connection) Do(verb string, uri string, body []byte) (result []byte,
 	}
 
 	log.Print("401 reauthenticating")
-	self.Login()
+	err = self.Login()
+	if err != nil {
+		return
+	}
 
 	result, err = self.do(verb, uri, body)
 

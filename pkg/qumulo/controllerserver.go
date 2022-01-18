@@ -18,6 +18,7 @@ package qumulo
 
 import (
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -52,7 +53,7 @@ func createConnection(server string, restPort int, secrets map[string]string) (*
 		return nil, status.Error(codes.Unauthenticated, "username and password secrets missing")
 	}
 
-	c := MakeConnection(server, restPort, username, password)
+	c := MakeConnection(server, restPort, username, password, new(http.Client))
 
 	return &c, nil
 }
