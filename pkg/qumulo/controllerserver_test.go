@@ -67,11 +67,11 @@ func teardown() {
 	}
 }
 
-func TestMain(m *testing.M) {
-	code := m.Run()
-	teardown()
-	os.Exit(code)
-}
+//func TestMain(m *testing.M) {
+//	code := m.Run()
+//	teardown()
+//	os.Exit(code)
+//}
 
 func TestCreateVolume(t *testing.T) {
 	cases := []struct {

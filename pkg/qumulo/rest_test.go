@@ -2,9 +2,11 @@ package qumulo
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 )
@@ -121,4 +123,44 @@ func TestRestAutoLoginFail(t *testing.T) {
 	assertErrorMatches(t, err, "Login failed: ")
 
 	assertMessagesConsumed(t, messages)
+}
+
+/*  _       _                       _   _
+ * (_)_ __ | |_ ___  __ _ _ __ __ _| |_(_) ___  _ __
+ * | | '_ \| __/ _ \/ _` | '__/ _` | __| |/ _ \| '_ \
+ * | | | | | ||  __/ (_| | | | (_| | |_| | (_) | | | |
+ * |_|_| |_|\__\___|\__, |_|  \__,_|\__|_|\___/|_| |_|
+ *                  |___/
+ *  FIGLET: integration
+ */
+
+var (
+	host     string
+	port     int
+	username string
+	password string
+)
+
+func TestMain(m *testing.M) {
+	flag.StringVar(&host,     "host",     "",         "Host to connect to")
+	flag.IntVar   (&port,     "port",     8000,       "Port to connect to")
+	flag.StringVar(&username, "username", "admin",    "Username to connect as")
+	flag.StringVar(&password, "password", "Admin123", "Password to use")
+	flag.Parse()
+
+	code := m.Run()
+	// add dir cleanup
+	os.Exit(code)
+}
+
+func requireServer(t *testing.T) {
+	if len(host) == 0 {
+		t.Skip("requires qumulo server")
+	}
+}
+
+func TestRestExperiment(t *testing.T) {
+	requireServer(t)
+	t.Error("blah blah")
+	t.Log("h hi hi  blah")
 }
