@@ -123,18 +123,15 @@ func (self *Connection) do(verb string, uri string, body []byte) ([]byte, error)
 
 	response, err := self.client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	status := response.StatusCode
 
-	log.Print(response.StatusCode)
-	log.Print(response.Header)
-
 	responseData, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	if status < 200 || status >= 300 {
@@ -146,6 +143,8 @@ func (self *Connection) do(verb string, uri string, body []byte) ([]byte, error)
 
 func (self *Connection) Do(verb string, uri string, body []byte) (result []byte, err error) {
 	result, err = self.do(verb, uri, body)
+
+	log.Printf("URI %s %s", verb, uri)
 
 	if err == nil {
 		return
@@ -161,7 +160,8 @@ func (self *Connection) Do(verb string, uri string, body []byte) (result []byte,
 		return
 	}
 
-	log.Print("401 reauthenticating")
+	// (Re-)authenticate and try again
+
 	err = self.Login()
 	if err != nil {
 		return
