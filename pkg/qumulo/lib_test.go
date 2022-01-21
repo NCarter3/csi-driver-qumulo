@@ -20,6 +20,15 @@ func assertErrorMatchesString(t *testing.T, err error, needle string) {
 	}
 }
 
+func assertErrorEqualsString(t *testing.T, err error, needle string) {
+	if err == nil {
+		t.Fatal("unexpected nil error")
+	}
+	if err.Error() == needle {
+		t.Fatalf("error does not equal %q: %q", needle, err.Error())
+	}
+}
+
 func assertRestError(t *testing.T, err error, expectedStatus int, needle string) {
 	if err == nil {
 		t.Fatal("unexpected nil error")

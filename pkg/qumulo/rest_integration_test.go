@@ -85,20 +85,84 @@ func TestRestSmoke(t *testing.T) {
 	testdir, cleanup := setupTest(t)
 	defer cleanup(t)
 
-	id, err := connection.CreateDir(testdir, "bar")
+	attributes, err := connection.CreateDir(testdir, "bar")
 	assertNoError(t, err)
-
-	t.Logf("Created Dir %v", id)
+	if attributes.Type != "FS_FILE_TYPE_DIRECTORY" {
+		t.Fatalf("unexpected attributes %v", attributes)
+	}
 }
 
 func TestRestCreateDir(t *testing.T) {
 	testdir, cleanup := setupTest(t)
 	defer cleanup(t)
 
-	id, err := connection.CreateDir(testdir, "bar")
+	_, err := connection.CreateDir(testdir, "bar")
 	assertNoError(t, err)
-	t.Logf("Created Dir %v", id)
 
-	id, err = connection.CreateDir(testdir, "bar")
+	_, err = connection.CreateDir(testdir, "bar")
 	assertRestError(t, err, 409, "fs_entry_exists_error")
+}
+
+func TestRestEnsureDirNewDir(t *testing.T) {
+	testdir, cleanup := setupTest(t)
+	defer cleanup(t)
+
+	attributes, err := connection.EnsureDir(testdir, "somedir")
+	assertNoError(t, err)
+	if attributes.Type != "FS_FILE_TYPE_DIRECTORY" {
+		t.Fatalf("unexpected attributes %v", attributes)
+	}
+}
+
+func TestRestEnsureDirAfterCreateDir(t *testing.T) {
+	testdir, cleanup := setupTest(t)
+	defer cleanup(t)
+
+	attributes1, err := connection.EnsureDir(testdir, "somedir")
+	assertNoError(t, err)
+
+	attributes2, err := connection.EnsureDir(testdir, "blah")
+	assertNoError(t, err)
+
+	if attributes1 != attributes1 {
+		t.Fatalf("unexpected attributes mismatch %v != %v", attributes1, attributes2)
+	}
+}
+
+func TestRestEnsureDirTwice(t *testing.T) {
+	testdir, cleanup := setupTest(t)
+	defer cleanup(t)
+
+	attributes1, err := connection.EnsureDir(testdir, "blah")
+	assertNoError(t, err)
+
+	attributes2, err := connection.EnsureDir(testdir, "blah")
+	assertNoError(t, err)
+
+	if attributes1 != attributes1 {
+		t.Fatalf("unexpected attributes mismatch %v != %v", attributes1, attributes2)
+	}
+}
+
+func TestRestCreateFile(t *testing.T) {
+	testdir, cleanup := setupTest(t)
+	defer cleanup(t)
+
+	attributes, err := connection.CreateFile(testdir, "notadir")
+	assertNoError(t, err)
+	if attributes.Type != "FS_FILE_TYPE_FILE" {
+		t.Fatalf("unexpected attributes %v", attributes)
+	}
+}
+
+func TestRestEnsureDirWithFileConflict(t *testing.T) {
+	testdir, cleanup := setupTest(t)
+	defer cleanup(t)
+
+	_, err := connection.CreateFile(testdir, "x")
+	assertNoError(t, err)
+
+	_, err = connection.EnsureDir(testdir, "x")
+	assertErrorEqualsString(
+		t, err, fmt.Sprintf("A non-directory exists at the requested path: %s/x", testdir))
 }

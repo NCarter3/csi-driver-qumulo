@@ -116,13 +116,13 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	// XXX scott: basedir
-	id, err := connection.CreateDir("/", name)
+	attributes, err := connection.EnsureDir("/", name)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create volume dir: %v", err.Error())
 	}
 
 	// XXX scott: this can overflow? stupid golang
-	err = connection.CreateQuota(id, uint64(reqCapacity))
+	err = connection.CreateQuota(attributes.Id, uint64(reqCapacity))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to set quota on ... : %v", err.Error())
 	}
@@ -248,15 +248,15 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	}
 
 	// XXX scott: basedir
-	id, err := connection.ResolvePath("/" + qVol.subDir)
+	attributes, err := connection.LookUp("/" + qVol.subDir)
 	if err != nil {
 		return nil, err // XXX
 	}
 
 	// XXX scott: this can overflow? stupid golang
-	err = connection.UpdateQuota(id, uint64(reqCapacity))
+	err = connection.UpdateQuota(attributes.Id, uint64(reqCapacity))
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to set quota on ... : %v", err.Error())
+		return nil, status.Errorf(codes.Internal, "failed to set quota on %v: %v", attributes, err.Error())
 	}
 
 	// XXX ExpandInUsePersistentVolumes required somewhere

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 type LoginRequest struct {
@@ -172,6 +173,14 @@ func (self *Connection) Do(verb string, uri string, body []byte) (result []byte,
 	return
 }
 
+/*                 _
+ * __   _____ _ __| |__  ___
+ * \ \ / / _ \ '__| '_ \/ __|
+ *  \ V /  __/ |  | |_) \__ \
+ *   \_/ \___|_|  |_.__/|___/
+ *  FIGLET: verbs
+ */
+
 func (self *Connection) Get(uri string) (result []byte, err error) {
 	return self.Do("GET", uri, []byte{})
 }
@@ -192,6 +201,44 @@ func (self *Connection) Delete(uri string) (result []byte, err error) {
 	return self.do("DELETE", uri, []byte{})
 }
 
+/*        _   _        _ _           _
+ *   __ _| |_| |_ _ __(_) |__  _   _| |_ ___  ___
+ *  / _` | __| __| '__| | '_ \| | | | __/ _ \/ __|
+ * | (_| | |_| |_| |  | | |_) | |_| | ||  __/\__ \
+ *  \__,_|\__|\__|_|  |_|_.__/ \__,_|\__\___||___/
+ *  FIGLET: attributes
+ */
+
+type FileAttributes struct {
+	Id                string
+	Type		      string
+	Mode              string
+}
+
+func ParseFileAttributes(responseData []byte) FileAttributes {
+	var result map[string]interface{}
+	json.Unmarshal(responseData, &result)
+
+	return FileAttributes{
+		Id:     result["id"].(string),
+		Type:   result["type"].(string),
+		Mode:   result["mode"].(string),
+	}
+}
+
+/*   ____                _
+ *  / ___|_ __ ___  __ _| |_ ___
+ * | |   | '__/ _ \/ _` | __/ _ \
+ * | |___| | |  __/ (_| | ||  __/
+ *  \____|_|  \___|\__,_|\__\___|
+ *  FIGLET: Create
+ */
+
+type CreateRequest struct {
+	Name              string `json:"name"`
+	Action            string `json:"action"`
+}
+
 /*   ____                _       ____  _
  *  / ___|_ __ ___  __ _| |_ ___|  _ \(_)_ __
  * | |   | '__/ _ \/ _` | __/ _ \ | | | | '__|
@@ -200,15 +247,10 @@ func (self *Connection) Delete(uri string) (result []byte, err error) {
  *  FIGLET: CreateDir
  */
 
-type CreateDirRequest struct {
-	Name              string `json:"name"`
-	Action            string `json:"action"`
-}
-
-func (self *Connection) CreateDir(path string, name string) (id string, err error) {
+func (self *Connection) CreateDir(path string, name string) (attributes FileAttributes, err error) {
 	uri := fmt.Sprintf("/v1/files/%s/entries/", url.QueryEscape(path))
 
-	body := new(CreateDirRequest)
+	body := new(CreateRequest)
 	body.Name = name
 	body.Action = "CREATE_DIRECTORY"
 
@@ -222,10 +264,71 @@ func (self *Connection) CreateDir(path string, name string) (id string, err erro
 		return
 	}
 
-	var result map[string]interface{}
-	json.Unmarshal(responseData, &result)
+	attributes = ParseFileAttributes(responseData)
 
-	id = result["id"].(string)
+	return
+}
+
+// Create a directory, or, if it already exists, succeed
+func (self *Connection) EnsureDir(path string, name string) (attributes FileAttributes, err error) {
+
+	attributes, err = self.CreateDir(path, name)
+
+	if err == nil {
+		return
+	}
+
+	switch err.(type) {
+	case RestError:
+		z := err.(RestError)
+		if z.StatusCode != 409 {
+			return
+		}
+		if !strings.Contains(err.Error(), "fs_entry_exists_error") {
+			return
+		}
+	default:
+		return
+	}
+
+	attributes, err = self.LookUp(fmt.Sprintf("%s/%s", path, name))
+	if err != nil {
+		return
+	}
+
+	if attributes.Type != "FS_FILE_TYPE_DIRECTORY" {
+		err = fmt.Errorf("A non-directory exists at the requested path: %v", attributes)
+	}
+
+	return
+}
+
+/*   ____                _       _____ _ _
+ *  / ___|_ __ ___  __ _| |_ ___|  ___(_) | ___
+ * | |   | '__/ _ \/ _` | __/ _ \ |_  | | |/ _ \
+ * | |___| | |  __/ (_| | ||  __/  _| | | |  __/
+ *  \____|_|  \___|\__,_|\__\___|_|   |_|_|\___|
+ *  FIGLET: CreateFile
+ */
+
+func (self *Connection) CreateFile(path string, name string) (attributes FileAttributes, err error) {
+	uri := fmt.Sprintf("/v1/files/%s/entries/", url.QueryEscape(path))
+
+	body := new(CreateRequest)
+	body.Name = name
+	body.Action = "CREATE_FILE"
+
+	json_data, err := json.Marshal(body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	responseData, err := self.Post(uri, json_data)
+	if err != nil {
+		return
+	}
+
+	attributes = ParseFileAttributes(responseData)
 
 	return
 }
@@ -277,16 +380,16 @@ func (self *Connection) UpdateQuota(id string, limit uint64) (err error) {
 	return
 }
 
-
-/*  ____                 _           ____       _   _
- * |  _ \ ___  ___  ___ | |_   _____|  _ \ __ _| |_| |__
- * | |_) / _ \/ __|/ _ \| \ \ / / _ \ |_) / _` | __| '_ \
- * |  _ <  __/\__ \ (_) | |\ V /  __/  __/ (_| | |_| | | |
- * |_| \_\___||___/\___/|_| \_/ \___|_|   \__,_|\__|_| |_|
- *  FIGLET: ResolvePath
+/*  _                _    _   _
+ * | |    ___   ___ | | _| | | |_ __
+ * | |   / _ \ / _ \| |/ / | | | '_ \
+ * | |__| (_) | (_) |   <| |_| | |_) |
+ * |_____\___/ \___/|_|\_\\___/| .__/
+ *                             |_|
+ *  FIGLET: LookUp
  */
 
-func (self *Connection) ResolvePath(path string) (id string, err error) {
+func (self *Connection) LookUp(path string) (attributes FileAttributes, err error) {
 	uri := fmt.Sprintf("/v1/files/%s/info/attributes", url.QueryEscape(path))
 
 	responseData, err := self.Get(uri)
@@ -294,10 +397,7 @@ func (self *Connection) ResolvePath(path string) (id string, err error) {
 		return
 	}
 
-	var result map[string]interface{}
-	json.Unmarshal(responseData, &result)
-
-	id = result["id"].(string)
+	attributes = ParseFileAttributes(responseData)
 
 	return
 }
@@ -315,7 +415,8 @@ type TreeDeleteCreateRequest struct {
 }
 
 func (self *Connection) TreeDeleteCreate(path string) (err error) {
-	id, err := self.ResolvePath(path)
+	attributes, err := self.LookUp(path)
+	// XXX handle enoent
 	if err != nil {
 		return
 	}
@@ -323,7 +424,7 @@ func (self *Connection) TreeDeleteCreate(path string) (err error) {
 	uri := "/v1/tree-delete/jobs/"
 
 	body := new(TreeDeleteCreateRequest)
-	body.Id = id
+	body.Id = attributes.Id
 
 	json_data, err := json.Marshal(body)
 	if err != nil {
@@ -331,6 +432,7 @@ func (self *Connection) TreeDeleteCreate(path string) (err error) {
 	}
 
 	_, err = self.Post(uri, json_data)
+	// XXX handle enoent
 
 	return err
 }
