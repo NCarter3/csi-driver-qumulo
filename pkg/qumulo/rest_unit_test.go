@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"testing"
 )
 
@@ -19,21 +18,6 @@ type Message struct {
 func assertMessagesConsumed(t *testing.T, messages []Message) {
 	if len(messages) != 0 {
 		t.Fatalf("not all messages used by test: %v", messages)
-	}
-}
-
-func assertNoError(t *testing.T, err error) {
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func assertErrorMatchesString(t *testing.T, err error, needle string) {
-	if err == nil {
-		t.Fatal("unexpected nil error")
-	}
-	if !strings.Contains(err.Error(), needle) {
-		t.Fatalf("error does not match %q: %q", needle, err.Error())
 	}
 }
 

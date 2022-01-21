@@ -72,8 +72,10 @@ func setupTest(t *testing.T) (testdir string, cleanup func(t *testing.T)) {
 	testdir = fmt.Sprintf("%s/%s", fixturedir, name)
 
 	cleanup = func(t *testing.T) {
-		err := connection.TreeDeleteCreate(testdir)
-		assertNoError(t, err)
+		if !t.Failed() {
+			err := connection.TreeDeleteCreate(testdir)
+			assertNoError(t, err)
+		}
 	}
 
 	return
@@ -95,6 +97,8 @@ func TestRestCreateDir(t *testing.T) {
 
 	id, err := connection.CreateDir(testdir, "bar")
 	assertNoError(t, err)
-
 	t.Logf("Created Dir %v", id)
+
+	id, err = connection.CreateDir(testdir, "bar")
+	assertRestError(t, err, 409, "fs_entry_exists_error")
 }
