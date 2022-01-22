@@ -37,10 +37,10 @@ func assertRestError(t *testing.T, err error, expectedStatus int, expectedErrorC
 	case RestError:
 		z := err.(RestError)
 		if z.StatusCode != expectedStatus {
-			t.Fatalf("error status %d != %d: %v", expectedStatus, z.StatusCode, err)
+			t.Fatalf("error status %d != %d: %v", expectedStatus, z.StatusCode, z)
 		}
 		if z.ErrorClass != expectedErrorClass {
-			t.Fatalf("error class does not match %q: %q", expectedErrorClass, z)
+			t.Fatalf("error class %q does not match %q: %q", expectedErrorClass, z.ErrorClass, z)
 		}
 	default:
 		t.Fatalf("unexpected error: %v", err)
