@@ -92,6 +92,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	// XXX this can return nil? and have to look at both fields, one can be zero
 	reqCapacity := req.GetCapacityRange().GetRequiredBytes()
 
 	klog.Infof("SCOTT req %v", req)
@@ -236,6 +237,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, status.Errorf(codes.NotFound, "Volume not found %q", volumeID)
 	}
 
+	// XXX this can return nil? and have to look at both fields, one can be zero
 	reqCapacity := req.GetCapacityRange().GetRequiredBytes()
 	klog.Infof("SCOTT reqCapacity %v", reqCapacity)
 
