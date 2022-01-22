@@ -29,7 +29,7 @@ func assertErrorEqualsString(t *testing.T, err error, needle string) {
 	}
 }
 
-func assertRestError(t *testing.T, err error, expectedStatus int, needle string) {
+func assertRestError(t *testing.T, err error, expectedStatus int, expectedErrorClass string) {
 	if err == nil {
 		t.Fatal("unexpected nil error")
 	}
@@ -39,8 +39,8 @@ func assertRestError(t *testing.T, err error, expectedStatus int, needle string)
 		if z.StatusCode != expectedStatus {
 			t.Fatalf("error status %d != %d: %v", expectedStatus, z.StatusCode, err)
 		}
-		if !strings.Contains(err.Error(), needle) {
-			t.Fatalf("error does not match %q: %q", needle, err.Error())
+		if z.ErrorClass != expectedErrorClass {
+			t.Fatalf("error class does not match %q: %q", expectedErrorClass, z)
 		}
 	default:
 		t.Fatalf("unexpected error: %v", err)

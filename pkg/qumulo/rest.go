@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 )
 
 type LoginRequest struct {
@@ -280,7 +279,7 @@ func (self *Connection) EnsureDir(path string, name string) (attributes FileAttr
 		if z.StatusCode != 409 {
 			return
 		}
-		if !strings.Contains(err.Error(), "fs_entry_exists_error") {
+		if z.ErrorClass != "fs_entry_exists_error" {
 			return
 		}
 	default:
