@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	nocleanup   bool
 	host        string
 	port        int
 	username    string
@@ -20,10 +21,11 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	flag.StringVar(&host,     "host",     "",         "Host to connect to")
-	flag.IntVar   (&port,     "port",     8000,       "Port to connect to")
-	flag.StringVar(&username, "username", "admin",    "Username to connect as")
-	flag.StringVar(&password, "password", "Admin123", "Password to use")
+	flag.BoolVar  (&nocleanup, "nocleanup", false,      "Skip clean up of artifacts")
+	flag.StringVar(&host,      "host",      "",         "Host to connect to")
+	flag.IntVar   (&port,      "port",      8000,       "Port to connect to")
+	flag.StringVar(&username,  "username",  "admin",    "Username to connect as")
+	flag.StringVar(&password,  "password",  "Admin123", "Password to use")
 	flag.Parse()
 
 	if len(host) != 0 {
@@ -42,7 +44,7 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	if connection != nil && code == 0 {
+	if connection != nil && !nocleanup {
 		err := connection.TreeDeleteCreate(fixturedir)
 		if err != nil {
 			log.Printf("Failed to clean up test dir %q with tree delete: %v", fixturedir, err)
