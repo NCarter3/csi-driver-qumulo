@@ -122,7 +122,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	// XXX scott: this can overflow? stupid golang
-	err = connection.CreateQuota(attributes.Id, uint64(reqCapacity))
+	err = connection.EnsureQuota(attributes.Id, uint64(reqCapacity))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to set quota on ... : %v", err.Error())
 	}
@@ -254,7 +254,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	}
 
 	// XXX scott: this can overflow? stupid golang
-	err = connection.UpdateQuota(attributes.Id, uint64(reqCapacity))
+	err = connection.EnsureQuota(attributes.Id, uint64(reqCapacity))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to set quota on %v: %v", attributes, err.Error())
 	}

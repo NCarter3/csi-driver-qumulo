@@ -215,3 +215,41 @@ func TestRestUpdateQuotaAfterCreateQuota(t *testing.T) {
 	err = connection.UpdateQuota(testDirId, 1024 * 1024 * 1024)
 	assertNoError(t, err)
 }
+
+func TestRestEnsureQuotaNewQuota(t *testing.T) {
+	_, testDirId, cleanup := setupTest(t)
+	defer cleanup(t)
+
+	err := connection.EnsureQuota(testDirId, 1024 * 1024 * 1024)
+	assertNoError(t, err)
+
+	err = connection.UpdateQuota(testDirId, 1024 * 1024 * 1024)
+	assertNoError(t, err)
+}
+
+func TestRestEnsureQuotaAfterCreateQuota(t *testing.T) {
+	_, testDirId, cleanup := setupTest(t)
+	defer cleanup(t)
+
+	err := connection.CreateQuota(testDirId, 1024 * 1024 * 1024)
+	assertNoError(t, err)
+
+	err = connection.EnsureQuota(testDirId, 2 * 1024 * 1024 * 1024)
+	assertNoError(t, err)
+
+	// XXX will need getquota at some point, can use in these tests.
+}
+
+func TestRestEnsureQuotaTwice(t *testing.T) {
+	_, testDirId, cleanup := setupTest(t)
+	defer cleanup(t)
+
+	err := connection.EnsureQuota(testDirId, 2 * 1024 * 1024 * 1024)
+	assertNoError(t, err)
+
+	err = connection.EnsureQuota(testDirId, 2 * 1024 * 1024 * 1024)
+	assertNoError(t, err)
+}
+
+// XXX quota file conflicts? - probably not really possible
+

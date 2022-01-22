@@ -369,6 +369,28 @@ func (self *Connection) UpdateQuota(id string, limit uint64) (err error) {
 	return
 }
 
+func (self *Connection) EnsureQuota(id string, limit uint64) (err error) {
+
+	err = self.CreateQuota(id, limit)
+
+	switch err.(type) {
+	case RestError:
+		z := err.(RestError)
+		if z.StatusCode != 409 {
+			return
+		}
+		if z.ErrorClass != "api_quotas_quota_limit_already_set_error" {
+			return
+		}
+	default:
+		return
+	}
+
+	err = self.UpdateQuota(id, limit)
+
+	return
+}
+
 /*  _                _    _   _
  * | |    ___   ___ | | _| | | |_ __
  * | |   / _ \ / _ \| |/ / | | | '_ \
