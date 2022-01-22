@@ -85,9 +85,7 @@ func (self *Connection) Login() error {
 
 	loginUrl := fmt.Sprintf("https://%s:%d/v1/session/login", self.Host, self.Port)
 
-	body := new(LoginRequest)
-	body.Username = self.Username
-	body.Password = self.Password
+	body := LoginRequest{Username: self. Username, Password: self.Password}
 
 	json_data, err := json.Marshal(body)
 	if err != nil {
@@ -250,9 +248,7 @@ type CreateRequest struct {
 func (self *Connection) CreateDir(path string, name string) (attributes FileAttributes, err error) {
 	uri := fmt.Sprintf("/v1/files/%s/entries/", url.QueryEscape(path))
 
-	body := new(CreateRequest)
-	body.Name = name
-	body.Action = "CREATE_DIRECTORY"
+	body := CreateRequest{Name: name, Action: "CREATE_DIRECTORY"}
 
 	json_data, err := json.Marshal(body)
 	if err != nil {
@@ -314,9 +310,7 @@ func (self *Connection) EnsureDir(path string, name string) (attributes FileAttr
 func (self *Connection) CreateFile(path string, name string) (attributes FileAttributes, err error) {
 	uri := fmt.Sprintf("/v1/files/%s/entries/", url.QueryEscape(path))
 
-	body := new(CreateRequest)
-	body.Name = name
-	body.Action = "CREATE_FILE"
+	body := CreateRequest{Name: name, Action: "CREATE_FILE"}
 
 	json_data, err := json.Marshal(body)
 	if err != nil {
@@ -349,9 +343,7 @@ type CreateQuotaRequest struct {
 func (self *Connection) CreateQuota(id string, limit uint64) (err error) {
 	uri := "/v1/files/quotas/"
 
-	body := new(CreateQuotaRequest)
-	body.Id = id
-	body.Limit = strconv.FormatUint(limit, 10)
+	body := CreateQuotaRequest{Id: id, Limit: strconv.FormatUint(limit, 10)}
 
 	json_data, err := json.Marshal(body)
 	if err != nil {
@@ -366,9 +358,7 @@ func (self *Connection) CreateQuota(id string, limit uint64) (err error) {
 func (self *Connection) UpdateQuota(id string, limit uint64) (err error) {
 	uri := fmt.Sprintf("/v1/files/quotas/%s", id)
 
-	body := new(CreateQuotaRequest)
-	body.Id = id
-	body.Limit = strconv.FormatUint(limit, 10)
+	body := CreateQuotaRequest{Id: id, Limit: strconv.FormatUint(limit, 10)}
 
 	json_data, err := json.Marshal(body)
 	if err != nil {
@@ -423,8 +413,7 @@ func (self *Connection) TreeDeleteCreate(path string) (err error) {
 
 	uri := "/v1/tree-delete/jobs/"
 
-	body := new(TreeDeleteCreateRequest)
-	body.Id = attributes.Id
+	body := TreeDeleteCreateRequest{Id: attributes.Id}
 
 	json_data, err := json.Marshal(body)
 	if err != nil {
