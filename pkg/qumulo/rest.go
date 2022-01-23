@@ -58,6 +58,21 @@ func (e RestError) Error() string {
 	)
 }
 
+func errorIsRestErrorWithStatus(err error, statusCode int) bool {
+	if err == nil {
+		return false
+	}
+
+	switch err.(type) {
+	case RestError:
+		z := err.(RestError)
+		if z.StatusCode == statusCode {
+			return true
+		}
+	}
+	return false
+}
+
 type ErrorResponse struct {
 	Description       string   `json:"description"`
 	Module            string   `json:"module"`
@@ -427,7 +442,10 @@ type TreeDeleteCreateRequest struct {
 
 func (self *Connection) TreeDeleteCreate(path string) (err error) {
 	attributes, err := self.LookUp(path)
-	// XXX handle enoent
+	if errorIsRestErrorWithStatus(err, 404) {
+		err = nil
+		return
+	}
 	if err != nil {
 		return
 	}
@@ -442,7 +460,11 @@ func (self *Connection) TreeDeleteCreate(path string) (err error) {
 	}
 
 	_, err = self.Post(uri, json_data)
-	// XXX handle enoent
+	if errorIsRestErrorWithStatus(err, 404) {
+		// something else deleted it.
+		err = nil
+	}
+	// XXX: it's possible that another tree delete is running on the id, handle that error
 
 	return err
 }

@@ -42,6 +42,7 @@ import (
 // o use assert in test - see qumulo_test.go for module
 // o when using GetCapacityRange, need to look at both fields, one can be zero
 // o can we make storeMountPath optional?
+// o probably should not be doing logic on ErrorClass
 
 // ControllerServer controller server setting
 type ControllerServer struct {
@@ -153,7 +154,6 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	path := cs.getVolumeRealPath(qVol)
 	klog.V(2).Infof("Removing subdirectory at %v with tree delete", path)
 
-	// XXX scott: in function, allow ENOENT in resolve and delete
 	err = connection.TreeDeleteCreate(path)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to tree delete subdirectory: %v", err.Error())

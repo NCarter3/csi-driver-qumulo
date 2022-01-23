@@ -253,3 +253,10 @@ func TestRestEnsureQuotaTwice(t *testing.T) {
 
 // XXX quota file conflicts? - probably not really possible
 
+func TestRestTreeDeleteNotFoundPath(t *testing.T) {
+	testDirPath, _, cleanup := setupTest(t)
+	defer cleanup(t)
+
+	err := connection.TreeDeleteCreate(testDirPath + "/blah")
+	assertNoError(t, err)
+}
