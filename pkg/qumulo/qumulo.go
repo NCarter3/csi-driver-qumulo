@@ -50,10 +50,13 @@ const (
 	// REST API port on cluster.
 	paramRestPort = "restport"
 
-	// Base directory of the NFS server to create volumes under.
-	// The base directory must be a direct child of the root directory.
-	// The root directory is omitted from the string, for example:
-	//     "base" instead of "/base"
+	// Directory on cluster where volumes are stored.
+	paramStoreRealPath = "storerealpath"
+
+	// Mount path on cluster where volumes are stored.
+	paramStoreMountPath = "storemountpath"
+
+	// Full share path to use on Node.
 	paramShare = "share"
 )
 

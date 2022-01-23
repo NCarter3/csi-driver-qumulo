@@ -39,6 +39,9 @@ import (
 // o use req capacity for quota, if not zero
 // o gen exports? so we get capacity locally in pods with fsstat
 // o relative exports and stuff - assume / access for now
+// o use assert in test - see qumulo_test.go for module
+// o when using GetCapacityRange, need to look at both fields, one can be zero
+// o can we make storeMountPath optional?
 
 // ControllerServer controller server setting
 type ControllerServer struct {
@@ -69,11 +72,14 @@ type qumuloVolume struct {
 	// REST API port on cluster (paramRestPort).
 	restPort int
 
-	// Base directory on the cluster to create volumes under (paramShare).
-	baseDir string
+	// Directory where volumes are stored (paramStoreRealPath) - leading and trailing /'s stripped.
+	storeRealPath string
 
-	// Volume direcotry (from req name)
-	subDir string
+	// Mount path where volumes are stored (paramStoreMountPath) - leading or trailing /'s stripped.
+	storeMountPath string
+
+	// Volume name (directory name created under storeRealPath) - from req name.
+	name string
 
 	// size of volume (from req capacity)
 	size int64
@@ -83,8 +89,6 @@ type qumuloVolume struct {
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	name := req.GetName()
 
-	klog.Infof("SCOTT CREATE: %s", name)
-
 	if len(name) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "CreateVolume name must be provided")
 	}
@@ -92,32 +96,26 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// XXX this can return nil? and have to look at both fields, one can be zero
 	reqCapacity := req.GetCapacityRange().GetRequiredBytes()
-
-	klog.Infof("SCOTT req %v", req)
 
 	qVol, err := cs.newQumuloVolume(name, reqCapacity, req.GetParameters())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	/*
 	var volCap *csi.VolumeCapability
 	if len(req.GetVolumeCapabilities()) > 0 {
 		volCap = req.GetVolumeCapabilities()[0]
 	}
-	klog.Infof("SCOTT volCap %v", volCap)
+	*/
 
-	secrets := req.GetSecrets()
-	klog.Infof("SCOTT secrets %v", secrets)
-
-	connection, err := createConnection(qVol.server, qVol.restPort, secrets)
+	connection, err := createConnection(qVol.server, qVol.restPort, req.GetSecrets())
 	if err != nil {
 		return nil, err
 	}
 
-	// XXX scott: basedir
-	attributes, err := connection.EnsureDir("/", name)
+	attributes, err := connection.EnsureDir("/" + qVol.storeRealPath, qVol.name)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create volume dir: %v", err.Error())
 	}
@@ -127,9 +125,6 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to set quota on ... : %v", err.Error())
 	}
-
-
-	// XXX scott: handle exists
 
 	// XXX scott: chmod 0777 new directory?
 
@@ -150,16 +145,12 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
-	secrets := req.GetSecrets()
-	klog.Infof("SCOTT secrets %v", secrets)
-
-	// XXX scott rest port
-	connection, err := createConnection(qVol.server, 18154, secrets)
+	connection, err := createConnection(qVol.server, qVol.restPort, req.GetSecrets())
 	if err != nil {
 		return nil, err
 	}
 
-	path := cs.getVolumeSharePath(qVol)
+	path := cs.getVolumeRealPath(qVol)
 	klog.V(2).Infof("Removing subdirectory at %v with tree delete", path)
 
 	// XXX scott: in function, allow ENOENT in resolve and delete
@@ -237,7 +228,6 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, status.Errorf(codes.NotFound, "Volume not found %q", volumeID)
 	}
 
-	// XXX this can return nil? and have to look at both fields, one can be zero
 	reqCapacity := req.GetCapacityRange().GetRequiredBytes()
 	klog.Infof("SCOTT reqCapacity %v", reqCapacity)
 
@@ -249,8 +239,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, err
 	}
 
-	// XXX scott: basedir
-	attributes, err := connection.LookUp("/" + qVol.subDir)
+	attributes, err := connection.LookUp(cs.getVolumeRealPath(qVol))
 	if err != nil {
 		return nil, err // XXX
 	}
@@ -303,14 +292,15 @@ func (cs *ControllerServer) validateVolumeCapability(c *csi.VolumeCapability) er
 }
 
 // Volume ID formats:
-// v1:server:restPort//baseDir//name
+// v1:server:restPort//storeRealPath//storeMountPath//name
 
 func (cs *ControllerServer) newQumuloVolume(name string, size int64, params map[string]string) (*qumuloVolume, error) {
 	var (
-		server               string
-		baseDir              string
-		restPort             int
-		err                  error
+		server         string
+		storeRealPath  string
+		storeMountPath string
+		restPort       int
+		err            error
 	)
 
 	// Default cluster rest port
@@ -322,8 +312,10 @@ func (cs *ControllerServer) newQumuloVolume(name string, size int64, params map[
 		switch strings.ToLower(k) {
 		case paramServer:
 			server = v
-		case paramShare:
-			baseDir = v
+		case paramStoreRealPath:
+			storeRealPath = v
+		case paramStoreMountPath:
+			storeMountPath = v
 		case paramRestPort:
 			restPort, err = strconv.Atoi(v)
 			if err != nil {
@@ -338,27 +330,47 @@ func (cs *ControllerServer) newQumuloVolume(name string, size int64, params map[
 	if server == "" {
 		return nil, fmt.Errorf("%v is a required parameter", paramServer)
 	}
-	if baseDir == "" {
-		return nil, fmt.Errorf("%v is a required parameter", paramShare)
+
+	if storeRealPath == "" {
+		return nil, fmt.Errorf("%v is a required parameter", paramStoreRealPath)
+	}
+	if !strings.HasPrefix(storeRealPath, "/") {
+		return nil, fmt.Errorf("parameter %v (%q) must be start with '/'", paramStoreRealPath, storeRealPath)
 	}
 
-	id := "v1:" + server + ":" + strconv.Itoa(restPort) + "//" + baseDir + "//" + name
+	storeRealPath = strings.Trim(storeRealPath, "/")
+
+	if storeMountPath == "" {
+		storeMountPath = storeRealPath
+	} else {
+		if !strings.HasPrefix(storeMountPath, "/") {
+			return nil, fmt.Errorf("parameter %v (%q) must be start with '/'", paramStoreMountPath, storeMountPath)
+		}
+		storeMountPath = strings.Trim(storeMountPath, "/")
+	}
+
+	id := "v1:" + server + ":" + strconv.Itoa(restPort) + "//" + storeRealPath + "//" + storeMountPath + "//" + name
 
 	vol := &qumuloVolume{
 		id:                   id,
 		server:               server,
 		restPort:             restPort,
-		baseDir:              baseDir,
-		subDir:               name,
+		storeRealPath:        storeRealPath,
+		storeMountPath:       storeMountPath,
+		name:                 name,
 		size:                 size,
 	}
 
 	return vol, nil
 }
 
+func (cs *ControllerServer) getVolumeRealPath(vol *qumuloVolume) string {
+	return filepath.Join(string(filepath.Separator), vol.storeRealPath, vol.name)
+}
+
 // Get user-visible share path for the volume
 func (cs *ControllerServer) getVolumeSharePath(vol *qumuloVolume) string {
-	return filepath.Join(string(filepath.Separator), vol.baseDir, vol.subDir)
+	return filepath.Join(string(filepath.Separator), vol.storeMountPath, vol.name)
 }
 
 func (cs *ControllerServer) qumuloVolumeToCSIVolume(vol *qumuloVolume) *csi.Volume {
@@ -373,7 +385,7 @@ func (cs *ControllerServer) qumuloVolumeToCSIVolume(vol *qumuloVolume) *csi.Volu
 }
 
 func (cs *ControllerServer) getQumuloVolumeFromID(id string) (*qumuloVolume, error) {
-	volRegex := regexp.MustCompile("^v1:([^:]+):([0-9]+)//(.*)//([^/]+)$")
+	volRegex := regexp.MustCompile("^v1:([^:]+):([0-9]+)//(.*)//(.*)//([^/]+)$")
 	tokens := volRegex.FindStringSubmatch(id)
 	if tokens == nil {
 		return nil, fmt.Errorf("Could not decode volume ID %q", id)
@@ -381,14 +393,15 @@ func (cs *ControllerServer) getQumuloVolumeFromID(id string) (*qumuloVolume, err
 
 	restPort, err := strconv.Atoi(tokens[2])
 	if err != nil {
-		return nil, fmt.Errorf("invalid port %q", id)
+		return nil, fmt.Errorf("Invalid port in volume ID %q", id)
 	}
 
 	return &qumuloVolume{
-		id:       id,
-		server:   tokens[1],
-		restPort: restPort,
-		baseDir:  tokens[3],
-		subDir:   tokens[4],
+		id:              id,
+		server:          tokens[1],
+		restPort:        restPort,
+		storeRealPath:   tokens[3],
+		storeMountPath:  tokens[4],
+		name:            tokens[5],
 	}, nil
 }
