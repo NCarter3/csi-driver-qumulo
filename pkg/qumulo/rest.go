@@ -94,6 +94,12 @@ func MakeRestError(status int, response []byte) RestError {
 	}
 }
 
+func panicOnError(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func (self *Connection) Login() error {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
@@ -102,9 +108,7 @@ func (self *Connection) Login() error {
 	body := LoginRequest{Username: self. Username, Password: self.Password}
 
 	json_data, err := json.Marshal(body)
-	if err != nil {
-		log.Fatal(err)
-	}
+	panicOnError(err)
 
 	response, err := self.client.Post(loginUrl, "application/json", bytes.NewBuffer(json_data))
 	if err != nil {
@@ -265,9 +269,7 @@ func (self *Connection) CreateDir(path string, name string) (attributes FileAttr
 	body := CreateRequest{Name: name, Action: "CREATE_DIRECTORY"}
 
 	json_data, err := json.Marshal(body)
-	if err != nil {
-		log.Fatal(err)
-	}
+	panicOnError(err)
 
 	responseData, err := self.Post(uri, json_data)
 	if err != nil {
@@ -327,9 +329,7 @@ func (self *Connection) CreateFile(path string, name string) (attributes FileAtt
 	body := CreateRequest{Name: name, Action: "CREATE_FILE"}
 
 	json_data, err := json.Marshal(body)
-	if err != nil {
-		log.Fatal(err)
-	}
+	panicOnError(err)
 
 	responseData, err := self.Post(uri, json_data)
 	if err != nil {
@@ -360,9 +360,7 @@ func (self *Connection) CreateQuota(id string, limit uint64) (err error) {
 	body := CreateQuotaRequest{Id: id, Limit: strconv.FormatUint(limit, 10)}
 
 	json_data, err := json.Marshal(body)
-	if err != nil {
-		return
-	}
+	panicOnError(err)
 
 	_, err = self.Post(uri, json_data)
 
@@ -375,9 +373,7 @@ func (self *Connection) UpdateQuota(id string, limit uint64) (err error) {
 	body := CreateQuotaRequest{Id: id, Limit: strconv.FormatUint(limit, 10)}
 
 	json_data, err := json.Marshal(body)
-	if err != nil {
-		return
-	}
+	panicOnError(err)
 
 	_, err = self.Put(uri, json_data)
 
@@ -455,9 +451,7 @@ func (self *Connection) TreeDeleteCreate(path string) (err error) {
 	body := TreeDeleteCreateRequest{Id: attributes.Id}
 
 	json_data, err := json.Marshal(body)
-	if err != nil {
-		return
-	}
+	panicOnError(err)
 
 	_, err = self.Post(uri, json_data)
 	if errorIsRestErrorWithStatus(err, 404) {
