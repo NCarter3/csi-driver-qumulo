@@ -137,7 +137,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "volume id is empty")
 	}
-	klog.Infof("SCOTT DELETE: %s", volumeID)
+
 	qVol, err := cs.getQumuloVolumeFromID(volumeID)
 	if err != nil {
 		// An invalid ID should be treated as doesn't exist
@@ -221,20 +221,14 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, status.Error(codes.InvalidArgument, "volume id is empty")
 	}
 
-	klog.Infof("SCOTT EXPAND: %s", volumeID)
-
 	qVol, err := cs.getQumuloVolumeFromID(volumeID)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "Volume not found %q", volumeID)
 	}
 
 	reqCapacity := req.GetCapacityRange().GetRequiredBytes()
-	klog.Infof("SCOTT reqCapacity %v", reqCapacity)
 
-	secrets := req.GetSecrets()
-	klog.Infof("SCOTT secrets %v", secrets)
-
-	connection, err := createConnection(qVol.server, qVol.restPort, secrets)
+	connection, err := createConnection(qVol.server, qVol.restPort, req.GetSecrets())
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +246,6 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 	// XXX ExpandInUsePersistentVolumes required somewhere
 
-	//return nil, status.Error(codes.Unimplemented, "")
 	return &csi.ControllerExpandVolumeResponse{CapacityBytes: reqCapacity, NodeExpansionRequired: false}, nil
 }
 
