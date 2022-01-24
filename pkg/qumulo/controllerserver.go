@@ -104,6 +104,11 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	// To get this feature, we need some kind of clone in the product.
+	if req.GetVolumeContentSource() != nil {
+		return nil, status.Error(codes.InvalidArgument, "Volume source unsupported")
+	}
+
 	/*
 	var volCap *csi.VolumeCapability
 	if len(req.GetVolumeCapabilities()) > 0 {
