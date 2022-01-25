@@ -33,6 +33,7 @@ import (
 )
 
 // XXX scott:
+// o version gate for tree delete
 // o add copyright to all files
 // o cache connections? 1 user at a time - could use auth file too
 // o error type/code for fmt.Errorf uses
