@@ -82,9 +82,6 @@ type qumuloVolume struct {
 
 	// Volume name (directory name created under storeRealPath) - from req name.
 	name string
-
-	// size of volume (from req capacity)
-	size int64
 }
 
 // CreateVolume create a volume
@@ -357,7 +354,6 @@ func (cs *ControllerServer) newQumuloVolume(name string, size int64, params map[
 		storeRealPath:        storeRealPath,
 		storeMountPath:       storeMountPath,
 		name:                 name,
-		size:                 size,
 	}
 
 	return vol, nil
