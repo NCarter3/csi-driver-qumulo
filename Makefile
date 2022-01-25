@@ -37,7 +37,7 @@ override IMAGE_VERSION := e2e-$(GIT_COMMIT)
 endif
 endif
 IMAGENAME ?= qumuloplugin
-REGISTRY ?= andyzhangx
+REGISTRY ?= scotturban
 REGISTRY_NAME ?= $(shell echo $(REGISTRY) | sed "s/.azurecr.io//g")
 IMAGE_TAG = $(REGISTRY)/$(IMAGENAME):$(IMAGE_VERSION)
 IMAGE_TAG_LATEST = $(REGISTRY)/$(IMAGENAME):latest
