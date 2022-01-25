@@ -27,7 +27,7 @@ include release-tools/build.make
 
 GIT_COMMIT = $(shell git rev-parse HEAD)
 BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-IMAGE_VERSION ?= v3.1.0
+IMAGE_VERSION ?= v1.0.0
 LDFLAGS = -X ${PKG}/pkg/qumulo.driverVersion=${IMAGE_VERSION} -X ${PKG}/pkg/qumulo.gitCommit=${GIT_COMMIT} -X ${PKG}/pkg/qumulo.buildDate=${BUILD_DATE}
 EXT_LDFLAGS = -s -w -extldflags "-static"
 # Use a custom version for E2E tests if we are testing in CI
