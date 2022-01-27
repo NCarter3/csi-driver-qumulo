@@ -28,6 +28,25 @@ spec:
           operator: "Exists"
           effect: "NoSchedule"
       containers:
+        - name: csi-resizer
+          image: k8s.gcr.io/sig-storage/csi-resizer:v1.3.0
+          args:
+            - "-v=2"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+          resources:
+            limits:
+              cpu: 1
+              memory: 400Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
         - name: csi-provisioner
           image: k8s.gcr.io/sig-storage/csi-provisioner:v2.2.2
           args:
@@ -65,7 +84,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: qumulo
-          image: mcr.microsoft.com/k8s/csi/qumulo-csi:v3.0.0
+          image: docker.io/scotturban/qumuloplugin:v1.0.0
           securityContext:
             privileged: true
             capabilities:

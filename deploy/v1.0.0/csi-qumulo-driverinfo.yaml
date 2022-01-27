@@ -3,6 +3,7 @@ apiVersion: storage.k8s.io/v1
 kind: CSIDriver
 metadata:
   name: qumulo.csi.k8s.io
+  namespace: kube-system
 spec:
   attachRequired: false
   volumeLifecycleModes:

@@ -1,6 +1,6 @@
 ---
 # This YAML file contains driver-registrar & csi driver nodeplugin API objects
-# that are necessary to run CSI nodeplugin for nfs
+# that are necessary to run CSI nodeplugin for qumulo
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
@@ -19,7 +19,7 @@ spec:
       labels:
         app: csi-qumulo-node
     spec:
-      hostNetwork: true  # original nfs connection would be broken without hostNetwork setting
+      hostNetwork: true  # original qumulo connection would be broken without hostNetwork setting
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
         kubernetes.io/os: linux
@@ -82,7 +82,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: mcr.microsoft.com/k8s/csi/qumulo-csi:v3.0.0
+          image: docker.io/scotturban/qumuloplugin:v1.0.0
           args:
             - "-v=5"
             - "--nodeid=$(NODE_ID)"
