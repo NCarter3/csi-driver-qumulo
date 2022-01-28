@@ -46,6 +46,7 @@ func TestMain(m *testing.M) {
 	portStr  := os.Getenv("QUMULO_TEST_PORT")
 	username := os.Getenv("QUMULO_TEST_USERNAME")
 	password := os.Getenv("QUMULO_TEST_PASSWORD")
+	testroot := os.Getenv("QUMULO_TEST_ROOT")
 
 	var nocleanup bool
 	var logging   bool
@@ -54,14 +55,11 @@ func TestMain(m *testing.M) {
 	flag.StringVar(&portStr,   "port",      portStr,    "Port to connect to")
 	flag.StringVar(&username,  "username",  username,   "Username to connect as")
 	flag.StringVar(&password,  "password",  password,   "Password to use")
+	flag.StringVar(&testroot,  "testroot",  testroot,   "Root directory to put test dir in")
 	flag.BoolVar  (&nocleanup, "nocleanup", false,      "Skip clean up of artifacts")
 	flag.BoolVar  (&logging,   "logging",   false,      "Enable logging")
 
 	flag.Parse()
-
-	if !logging {
-		log.SetOutput(ioutil.Discard)
-	}
 
 	if len(host) != 0 {
 		port, err := strconv.Atoi(portStr)
@@ -81,14 +79,22 @@ func TestMain(m *testing.M) {
 
 		c := MakeConnection(host, port, username, password, new(http.Client))
 
-		_, err = c.CreateDir("/", "gotest")
+		if len(testroot) == 0 {
+			testroot = "/"
+		}
+
+		_, err = c.CreateDir(testroot, "gotest")
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		fixturedir = "/gotest"
+		fixturedir = fmt.Sprintf("%s/gotest", testroot)
 
 		connection = &c
+	}
+
+	if !logging {
+		log.SetOutput(ioutil.Discard)
 	}
 
 	code := m.Run()
