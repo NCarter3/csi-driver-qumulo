@@ -20,12 +20,12 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 
 	"fmt"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -368,67 +368,89 @@ func TestControllerGetCapabilities(t *testing.T) {
 	}
 }
 
-func TestNfsVolFromId(t *testing.T) {
+func TestGetQumuloVolumeFromID(t *testing.T) {
 	cases := []struct {
 		name      string
 		req       string
-		resp      *qumuloVolume
-		expectErr bool
+		expectRet *qumuloVolume
+		expectErr string
 	}{
 		{
 			name:      "ID only server",
-			req:       testServer,
-			resp:      nil,
-			expectErr: true,
+			req:       "blah blah",
+			expectRet: nil,
+			expectErr: "Could not decode volume ID \"blah blah\"",
 		},
 		{
-			name:      "ID missing subDir",
-			req:       strings.Join([]string{testServer, testBaseDir}, "/"),
-			resp:      nil,
-			expectErr: true,
+			name:      "Unknown version",
+			req:       "v3:server1:444//////volume",
+			expectRet: nil,
+			expectErr: "Could not decode volume ID \"v3:server1:444//////volume\"",
 		},
 		{
-			name: "valid request single baseDir",
-			req:  testVolumeID,
-			resp: &qumuloVolume{
-				id:            testVolumeID,
-				server:        testServer,
-				storeRealPath: testBaseDir,
-				name:          testCSIVolume,
+			name:      "Bad port",
+			req:       "v1:server1:4foo//////volume",
+			expectRet: nil,
+			expectErr: "Could not decode volume ID \"v1:server1:4foo//////volume\"",
+		},
+		{
+			name:      "Happy store path root, mount path root",
+			req:       "v1:server1:444//////volume",
+			expectRet: &qumuloVolume{
+				id:             "v1:server1:444//////volume",
+				server:         "server1",
+				restPort:       444,
+				storeRealPath:  "",
+				storeMountPath: "",
+				name:           "volume",
 			},
-			expectErr: false,
+			expectErr: "",
 		},
 		{
-			name: "valid request nested baseDir",
-			req:  testVolumeIDNested,
-			resp: &qumuloVolume{
-				id:            testVolumeIDNested,
-				server:        testServer,
-				storeRealPath: testBaseDirNested,
-				name:          testCSIVolume,
+			name:      "Happy store path non-root, mount path root",
+			req:       "v1:server1:444//foo/bar/baz////volume",
+			expectRet: &qumuloVolume{
+				id:             "v1:server1:444//foo/bar/baz////volume",
+				server:         "server1",
+				restPort:       444,
+				storeRealPath:  "foo/bar/baz",
+				storeMountPath: "",
+				name:           "volume",
 			},
-			expectErr: false,
+			expectErr: "",
+		},
+		{
+			name:      "Happy store path non-root, mount path non-root",
+			req:       "v1:server1:444//foo/bar/baz//some/export//frog",
+			expectRet: &qumuloVolume{
+				id:             "v1:server1:444//foo/bar/baz//some/export//frog",
+				server:         "server1",
+				restPort:       444,
+				storeRealPath:  "foo/bar/baz",
+				storeMountPath: "some/export",
+				name:           "frog",
+			},
+			expectErr: "",
 		},
 	}
+
+	// XXX scott: we don't really need a controller for this function
+	cs := initTestController(t)
 
 	for _, test := range cases {
 		test := test //pin
 		t.Run(test.name, func(t *testing.T) {
-			// Setup
-			cs := initTestController(t)
-
 			// Run
-			resp, err := cs.getQumuloVolumeFromID(test.req)
+			ret, err := cs.getQumuloVolumeFromID(test.req)
 
 			// Verify
-			if !test.expectErr && err != nil {
-				t.Errorf("test %q failed: %v", test.name, err)
-			}
-			if test.expectErr && err == nil {
-				t.Errorf("test %q failed; got success", test.name)
-			}
-			if !reflect.DeepEqual(resp, test.resp) {
-				t.Errorf("test %q failed: got resp %+v, expected %+v", test.name, resp, test.resp)
+			if len(test.expectErr) != 0 {
+				assert.EqualError(t, err, test.expectErr)
+			} else {
+				assert.NoError(t, err)
+				if !reflect.DeepEqual(ret, test.expectRet) {
+					t.Errorf("test %q failed: %+v != %+v", test.name, ret, test.expectRet)
+				}
 			}
 		})
 	}
