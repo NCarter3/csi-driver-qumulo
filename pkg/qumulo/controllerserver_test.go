@@ -20,6 +20,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 
 	"fmt"
@@ -33,17 +35,8 @@ import (
 )
 
 const (
-	testServer         = "test-server"
-	testBaseDir        = "test-base-dir"
-	testBaseDirNested  = "test/base/dir"
 	testCSIVolume      = "test-csi"
 	testVolumeID       = "test-server/test-base-dir/test-csi"
-	testVolumeIDNested = "test-server/test/base/dir/test-csi"
-)
-
-// for Windows support in the future
-var (
-	testShare = filepath.Join(string(filepath.Separator), testBaseDir, string(filepath.Separator), testCSIVolume)
 )
 
 func initTestController(t *testing.T) *ControllerServer {
@@ -56,152 +49,133 @@ func initTestController(t *testing.T) *ControllerServer {
 }
 
 func teardown() {
-	err := os.RemoveAll("/tmp/" + testCSIVolume)
-
-	if err != nil {
-		fmt.Print(err.Error())
-		fmt.Printf("\n")
-		fmt.Printf("\033[1;91m%s\033[0m\n", "> Teardown failed")
-	} else {
-		fmt.Printf("\033[1;36m%s\033[0m\n", "> Teardown completed")
-	}
+	// XXX scott: did have mount removal - use in e2e tests? - see the fixture stuff in lib_test.go
 }
 
-//func TestMain(m *testing.M) {
-//	code := m.Run()
-//	teardown()
-//	os.Exit(code)
-//}
-
 func TestCreateVolume(t *testing.T) {
-	cases := []struct {
-		name      string
-		req       *csi.CreateVolumeRequest
-		resp      *csi.CreateVolumeResponse
-		expectErr bool
-	}{
-		{
-			name: "valid defaults",
-			req: &csi.CreateVolumeRequest{
-				Name: testCSIVolume,
-				VolumeCapabilities: []*csi.VolumeCapability{
-					{
-						AccessType: &csi.VolumeCapability_Mount{
-							Mount: &csi.VolumeCapability_MountVolume{},
-						},
-						AccessMode: &csi.VolumeCapability_AccessMode{
-							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-						},
-					},
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	volumeId := fmt.Sprintf("v1:%s:%d//%s////foobar", testHost, testPort, strings.Trim(testDirPath, "/"))
+
+	t.Logf("TEST PORT is %d", testPort)
+
+	happyRequest := csi.CreateVolumeRequest{
+		Name: "foobar",
+		VolumeCapabilities: []*csi.VolumeCapability{
+			{
+				AccessType: &csi.VolumeCapability_Mount{
+					Mount: &csi.VolumeCapability_MountVolume{},
 				},
-				Parameters: map[string]string{
-					paramServer: testServer,
-					paramShare:  testBaseDir,
+				AccessMode: &csi.VolumeCapability_AccessMode{
+					Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 				},
 			},
-			resp: &csi.CreateVolumeResponse{
+		},
+		CapacityRange: &csi.CapacityRange{RequiredBytes: 1024 * 1024 * 1024},
+		Parameters: map[string]string{
+			paramServer:         testHost,
+			paramRestPort:       strconv.Itoa(testPort),
+			paramStoreRealPath:  testDirPath,
+			paramStoreMountPath: "/",
+		},
+		Secrets: map[string]string{
+			"username": testUsername,
+			"password": testPassword,
+		},
+	}
+
+	type MakeRequest func() *csi.CreateVolumeRequest
+
+	cases := []struct {
+		name      string
+		makeReq   MakeRequest
+		expectRet *csi.CreateVolumeResponse
+		expectErr string
+	}{
+		{
+			name: "happy path",
+			makeReq: func() *csi.CreateVolumeRequest { return &happyRequest },
+			expectRet: &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
-					VolumeId: testVolumeID,
+					VolumeId: volumeId,
 					VolumeContext: map[string]string{
-						paramServer: testServer,
-						paramShare:  testShare,
+						paramServer: testHost,
+						paramShare:  "/foobar",
 					},
 				},
 			},
 		},
 		{
 			name: "name empty",
-			req: &csi.CreateVolumeRequest{
-				VolumeCapabilities: []*csi.VolumeCapability{
-					{
-						AccessType: &csi.VolumeCapability_Mount{
-							Mount: &csi.VolumeCapability_MountVolume{},
-						},
-						AccessMode: &csi.VolumeCapability_AccessMode{
-							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-						},
-					},
-				},
-				Parameters: map[string]string{
-					paramServer: testServer,
-					paramShare:  testBaseDir,
-				},
+			makeReq: func() *csi.CreateVolumeRequest {
+				r := happyRequest
+				r.Name = ""
+				return &r
 			},
-			expectErr: true,
+			expectErr: "rpc error: code = InvalidArgument desc = CreateVolume name must be provided",
 		},
 		{
-			name: "invalid volume capability",
-			req: &csi.CreateVolumeRequest{
-				Name: testCSIVolume,
-				VolumeCapabilities: []*csi.VolumeCapability{
+			name: "invalid volume capabilities",
+			makeReq: func() *csi.CreateVolumeRequest {
+				r := happyRequest
+				r.VolumeCapabilities = []*csi.VolumeCapability{
 					{
 						AccessMode: &csi.VolumeCapability_AccessMode{
 							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 						},
 					},
-				},
-				Parameters: map[string]string{
-					paramServer: testServer,
-					paramShare:  testBaseDir,
-				},
+				}
+				return &r
 			},
-			expectErr: true,
+			expectErr: "rpc error: code = InvalidArgument desc = volume capability access type not set",
 		},
 		{
-			name: "invalid create context",
-			req: &csi.CreateVolumeRequest{
-				Name: testCSIVolume,
-				VolumeCapabilities: []*csi.VolumeCapability{
-					{
-						AccessType: &csi.VolumeCapability_Mount{
-							Mount: &csi.VolumeCapability_MountVolume{},
-						},
-						AccessMode: &csi.VolumeCapability_AccessMode{
-							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-						},
-					},
-				},
-				Parameters: map[string]string{
-					"unknown-parameter": "foo",
-				},
+			name: "unknown parameter",
+			makeReq: func() *csi.CreateVolumeRequest {
+				r := happyRequest
+				r.Parameters["wut"] = "ever"
+				return &r
 			},
-			expectErr: true,
+			expectErr: "rpc error: code = InvalidArgument desc = invalid parameter \"wut\"",
 		},
 	}
 
+	// XXX scott:
+	// * can test the directory and quota exist
+	// * will probably have cross talk of tests
+	// * so maybe separate tests
+	// * test idempotency
+	// * more cases and errors
+
 	for _, test := range cases {
-		workingMountDir := "/tmp" // XXX scott
 		test := test //pin
 		t.Run(test.name, func(t *testing.T) {
 			// Setup
 			cs := initTestController(t)
+
 			// Run
-			resp, err := cs.CreateVolume(context.TODO(), test.req)
+			ret, err := cs.CreateVolume(context.TODO(), test.makeReq())
 
 			// Verify
-			if !test.expectErr && err != nil {
-				t.Errorf("test %q failed: %v", test.name, err)
-			}
-			if test.expectErr && err == nil {
-				t.Errorf("test %q failed; got success", test.name)
-			}
-			if !reflect.DeepEqual(resp, test.resp) {
-				t.Errorf("test %q failed: got resp %+v, expected %+v", test.name, resp, test.resp)
-			}
-			if !test.expectErr {
-				info, err := os.Stat(filepath.Join(workingMountDir, test.req.Name, test.req.Name))
-				if err != nil {
-					t.Errorf("test %q failed: couldn't find volume subdirectory: %v", test.name, err)
-				}
-				if !info.IsDir() {
-					t.Errorf("test %q failed: subfile not a directory", test.name)
+			t.Log(ret)
+			if len(test.expectErr) != 0 {
+				assert.EqualError(t, err, test.expectErr)
+			} else {
+				assert.NoError(t, err)
+				if !reflect.DeepEqual(ret, test.expectRet) {
+					t.Errorf("test %q failed: got %+v, expected %+v", test.name, ret, test.expectRet)
 				}
 			}
 		})
 	}
 }
 
+// XXX scott: expand volume
+
 func TestDeleteVolume(t *testing.T) {
+	// XXX scott: all of this
+
 	cases := []struct {
 		desc        string
 		req         *csi.DeleteVolumeRequest
