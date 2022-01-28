@@ -433,3 +433,77 @@ func TestNfsVolFromId(t *testing.T) {
 		})
 	}
 }
+
+func TestGetQuotaLimit(t *testing.T) {
+	cases := []struct {
+		name      string
+		input     *csi.CapacityRange
+		expectErr string
+		expectRet uint64
+	}{
+		{
+			name:	   "nil input",
+			input:     nil,
+			expectErr: "rpc error: code = InvalidArgument desc = CapacityRange must be provided",
+			expectRet: 0,
+		},
+		{
+			name:	   "both zero",
+			input:     &csi.CapacityRange{RequiredBytes: 0, LimitBytes: 0},
+			expectErr: "rpc error: code = InvalidArgument desc = RequiredBytes or LimitBytes must be provided",
+			expectRet: 0,
+		},
+		{
+			name:	   "required negative, limit zero",
+			input:     &csi.CapacityRange{RequiredBytes: -1, LimitBytes: 0},
+			expectErr: "rpc error: code = InvalidArgument desc = RequiredBytes must be positive",
+			expectRet: 0,
+		},
+		{
+			name:	   "required zero, limit negative",
+			input:     &csi.CapacityRange{RequiredBytes: 0, LimitBytes: -1},
+			expectErr: "rpc error: code = InvalidArgument desc = LimitBytes must be positive",
+			expectRet: 0,
+		},
+		{
+			name:	   "required used first",
+			input:     &csi.CapacityRange{RequiredBytes: 100, LimitBytes: 50},
+			expectErr: "",
+			expectRet: 100,
+		},
+		{
+			name:	   "limit used if required is zero",
+			input:     &csi.CapacityRange{RequiredBytes: 0, LimitBytes: 50},
+			expectErr: "",
+			expectRet: 50,
+		},
+	}
+
+	for _, test := range cases {
+		test := test //pin
+		t.Run(test.name, func(t *testing.T) {
+			// Setup
+
+			// Run
+			limit, err := getQuotaLimit(test.input)
+
+			// Verify
+			if len(test.expectErr) > 0 {
+				if err == nil {
+					t.Errorf("test %q failed; expected err", test.name)
+				}
+
+				if err.Error() != test.expectErr {
+					t.Errorf("test %q failed; expected err %v != %v ", test.name, err.Error(), test.expectErr)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("test %q failed; expected nil err: %v", test.name, err)
+				}
+				if limit != test.expectRet {
+					t.Errorf("test %q failed; limit %d != %d", test.name, limit, test.expectRet)
+				}
+			}
+		})
+	}
+}

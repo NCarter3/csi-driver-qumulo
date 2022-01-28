@@ -37,11 +37,9 @@ import (
 // o add copyright to all files
 // o cache connections? 1 user at a time - could use auth file too
 // o error type/code for fmt.Errorf uses
-// o use req capacity for quota, if not zero
 // o gen exports? so we get capacity locally in pods with fsstat
 // o relative exports and stuff - assume / access for now
 // o use assert in test - see qumulo_test.go for module
-// o when using GetCapacityRange, need to look at both fields, one can be zero
 // o can we make storeMountPath optional?
 // o probably should not be doing logic on ErrorClass
 
@@ -84,6 +82,28 @@ type qumuloVolume struct {
 	name string
 }
 
+func getQuotaLimit (capacityRange *csi.CapacityRange) (uint64, error) {
+	if capacityRange == nil {
+		return 0, status.Error(codes.InvalidArgument, "CapacityRange must be provided")
+	}
+
+	if bytes := capacityRange.GetRequiredBytes(); bytes != 0 {
+		if bytes < 0 {
+			return 0, status.Error(codes.InvalidArgument, "RequiredBytes must be positive")
+		}
+		return uint64(bytes), nil
+	}
+
+	if bytes := capacityRange.GetLimitBytes(); bytes != 0 {
+		if bytes < 0 {
+			return 0, status.Error(codes.InvalidArgument, "LimitBytes must be positive")
+		}
+		return uint64(bytes), nil
+	}
+
+	return 0, status.Error(codes.InvalidArgument, "RequiredBytes or LimitBytes must be provided")
+}
+
 // CreateVolume create a volume
 func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	name := req.GetName()
@@ -95,9 +115,12 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	reqCapacity := req.GetCapacityRange().GetRequiredBytes()
+	quotaLimit, err := getQuotaLimit(req.GetCapacityRange())
+	if err != nil {
+		return nil, err
+	}
 
-	qVol, err := cs.newQumuloVolume(name, reqCapacity, req.GetParameters())
+	qVol, err := cs.newQumuloVolume(name, req.GetParameters())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -124,10 +147,9 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Errorf(codes.Internal, "failed to create volume dir: %v", err.Error())
 	}
 
-	// XXX scott: this can overflow? stupid golang
-	err = connection.EnsureQuota(attributes.Id, uint64(reqCapacity))
+	err = connection.EnsureQuota(attributes.Id, quotaLimit)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to set quota on ... : %v", err.Error())
+		return nil, status.Errorf(codes.Internal, "Failed to set quota on %v: %v", qVol.id, err.Error())
 	}
 
 	// XXX scott: chmod 0777 new directory?
@@ -229,7 +251,10 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, status.Errorf(codes.NotFound, "Volume not found %q", volumeID)
 	}
 
-	reqCapacity := req.GetCapacityRange().GetRequiredBytes()
+	quotaLimit, err := getQuotaLimit(req.GetCapacityRange())
+	if err != nil {
+		return nil, err
+	}
 
 	connection, err := createConnection(qVol.server, qVol.restPort, req.GetSecrets())
 	if err != nil {
@@ -241,15 +266,17 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, err // XXX
 	}
 
-	// XXX scott: this can overflow? stupid golang
-	err = connection.EnsureQuota(attributes.Id, uint64(reqCapacity))
+	err = connection.EnsureQuota(attributes.Id, quotaLimit)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to set quota on %v: %v", attributes, err.Error())
+		return nil, status.Errorf(codes.Internal, "Failed to set quota on %v: %v", qVol.id, err.Error())
 	}
 
 	// XXX ExpandInUsePersistentVolumes required somewhere
 
-	return &csi.ControllerExpandVolumeResponse{CapacityBytes: reqCapacity, NodeExpansionRequired: false}, nil
+	return &csi.ControllerExpandVolumeResponse{
+		CapacityBytes: int64(quotaLimit),
+		NodeExpansionRequired: false,
+	}, nil
 }
 
 func (cs *ControllerServer) validateVolumeCapabilities(caps []*csi.VolumeCapability) error {
@@ -290,7 +317,7 @@ func (cs *ControllerServer) validateVolumeCapability(c *csi.VolumeCapability) er
 // Volume ID formats:
 // v1:server:restPort//storeRealPath//storeMountPath//name
 
-func (cs *ControllerServer) newQumuloVolume(name string, size int64, params map[string]string) (*qumuloVolume, error) {
+func (cs *ControllerServer) newQumuloVolume(name string, params map[string]string) (*qumuloVolume, error) {
 	var (
 		server         string
 		storeRealPath  string
