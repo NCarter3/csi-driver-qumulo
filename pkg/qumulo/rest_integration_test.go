@@ -79,7 +79,7 @@ func setupTest(t *testing.T) (testDirPath string, testDirId string, cleanup func
 	cleanup = func(t *testing.T) {
 		if !t.Failed() {
 			err := connection.TreeDeleteCreate(testDirPath)
-			assertNoError(t, err)
+			assert.NoError(t, err)
 		}
 	}
 
@@ -99,7 +99,7 @@ func TestRestCreateDir(t *testing.T) {
 	defer cleanup(t)
 
 	attributes, err := connection.CreateDir(testDirPath, "bar")
-	assertNoError(t, err)
+	assert.NoError(t, err)
 	if attributes.Type != "FS_FILE_TYPE_DIRECTORY" {
 		t.Fatalf("unexpected attributes %v", attributes)
 	}
@@ -110,7 +110,7 @@ func TestRestCreateDirTwiceErrors(t *testing.T) {
 	defer cleanup(t)
 
 	_, err := connection.CreateDir(testDirPath, "bar")
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	_, err = connection.CreateDir(testDirPath, "bar")
 	assertRestError(t, err, 409, "fs_entry_exists_error")
@@ -121,7 +121,7 @@ func TestRestEnsureDirNewDir(t *testing.T) {
 	defer cleanup(t)
 
 	attributes, err := connection.EnsureDir(testDirPath, "somedir")
-	assertNoError(t, err)
+	assert.NoError(t, err)
 	if attributes.Type != "FS_FILE_TYPE_DIRECTORY" {
 		t.Fatalf("unexpected attributes %v", attributes)
 	}
@@ -132,10 +132,10 @@ func TestRestEnsureDirAfterCreateDir(t *testing.T) {
 	defer cleanup(t)
 
 	attributes1, err := connection.EnsureDir(testDirPath, "somedir")
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	attributes2, err := connection.EnsureDir(testDirPath, "blah")
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	if attributes1 != attributes1 {
 		t.Fatalf("unexpected attributes mismatch %v != %v", attributes1, attributes2)
@@ -147,10 +147,10 @@ func TestRestEnsureDirTwice(t *testing.T) {
 	defer cleanup(t)
 
 	attributes1, err := connection.EnsureDir(testDirPath, "blah")
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	attributes2, err := connection.EnsureDir(testDirPath, "blah")
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	if attributes1 != attributes1 {
 		t.Fatalf("unexpected attributes mismatch %v != %v", attributes1, attributes2)
@@ -162,7 +162,7 @@ func TestRestCreateFile(t *testing.T) {
 	defer cleanup(t)
 
 	attributes, err := connection.CreateFile(testDirPath, "notadir")
-	assertNoError(t, err)
+	assert.NoError(t, err)
 	if attributes.Type != "FS_FILE_TYPE_FILE" {
 		t.Fatalf("unexpected attributes %v", attributes)
 	}
@@ -173,11 +173,11 @@ func TestRestEnsureDirWithFileConflict(t *testing.T) {
 	defer cleanup(t)
 
 	_, err := connection.CreateFile(testDirPath, "x")
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	_, err = connection.EnsureDir(testDirPath, "x")
-	assertErrorEqualsString(
-		t, err, fmt.Sprintf("A non-directory exists at the requested path: %s/x", testDirPath))
+	path := fmt.Sprintf("%s/x", testDirPath)
+	assert.EqualError(t, err, fmt.Sprintf("A non-directory exists at: %q, FS_FILE_TYPE_FILE", path))
 }
 
 func TestRestCreateQuota(t *testing.T) {
@@ -186,10 +186,10 @@ func TestRestCreateQuota(t *testing.T) {
 
 	newLimit := uint64(1024 * 1024 * 1024)
 	err := connection.CreateQuota(testDirId, newLimit)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	limit, err := connection.GetQuota(testDirId)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, limit, newLimit)
 }
 
@@ -198,7 +198,7 @@ func TestRestCreateQuotaTwiceErrors(t *testing.T) {
 	defer cleanup(t)
 
 	err := connection.CreateQuota(testDirId, 1024 * 1024 * 1024)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	err = connection.CreateQuota(testDirId, 1024 * 1024 * 1024)
 	assertRestError(t, err, 409, "api_quotas_quota_limit_already_set_error")
@@ -218,13 +218,13 @@ func TestRestUpdateQuotaAfterCreateQuota(t *testing.T) {
 
 	newLimit := uint64(1024 * 1024 * 1024)
 	err := connection.CreateQuota(testDirId, newLimit)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	err = connection.UpdateQuota(testDirId, newLimit)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	limit, err := connection.GetQuota(testDirId)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, limit, newLimit)
 }
 
@@ -234,10 +234,10 @@ func TestRestEnsureQuotaNewQuota(t *testing.T) {
 
 	newLimit := uint64(1024 * 1024 * 1024)
 	err := connection.EnsureQuota(testDirId, newLimit)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	limit, err := connection.GetQuota(testDirId)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, limit, newLimit)
 }
 
@@ -246,14 +246,14 @@ func TestRestEnsureQuotaAfterCreateQuota(t *testing.T) {
 	defer cleanup(t)
 
 	err := connection.CreateQuota(testDirId, 1024 * 1024 * 1024)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	newLimit := uint64(2 * 1024 * 1024 * 1024)
 	err = connection.EnsureQuota(testDirId, newLimit)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	limit, err := connection.GetQuota(testDirId)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, limit, newLimit)
 }
 
@@ -263,13 +263,13 @@ func TestRestEnsureQuotaTwice(t *testing.T) {
 
 	newLimit := uint64(2 * 1024 * 1024 * 1024)
 	err := connection.EnsureQuota(testDirId, newLimit)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	err = connection.EnsureQuota(testDirId, newLimit)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	limit, err := connection.GetQuota(testDirId)
-	assertNoError(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, limit, newLimit)
 }
 
@@ -280,5 +280,5 @@ func TestRestTreeDeleteNotFoundPath(t *testing.T) {
 	defer cleanup(t)
 
 	err := connection.TreeDeleteCreate(testDirPath + "/blah")
-	assertNoError(t, err)
+	assert.NoError(t, err)
 }

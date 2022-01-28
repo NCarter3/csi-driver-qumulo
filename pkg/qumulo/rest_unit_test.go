@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type Message struct {
@@ -86,9 +88,9 @@ func TestRestAutoLoginSucces(t *testing.T) {
 
 	connection := MakeConnection(testHost, testPort, "bob", "yeruncle", client)
 	_, err := connection.Get("/hi")
-	assertNoError(t, err)
+	assert.NoError(t, err)
 	_, err = connection.Get("/bye")
-	assertNoError(t, err)
+	assert.NoError(t, err)
 
 	assertMessagesConsumed(t, messages)
 }
@@ -102,7 +104,8 @@ func TestRestAutoLoginFail(t *testing.T) {
 
 	connection := MakeConnection(testHost, testPort, "bob", "yeruncle", client)
 	_, err := connection.Get("/hi")
-	assertErrorMatchesString(t, err, "Login failed: ")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Login failed: ")
 
 	assertMessagesConsumed(t, messages)
 }

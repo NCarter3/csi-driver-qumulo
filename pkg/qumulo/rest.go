@@ -303,13 +303,14 @@ func (self *Connection) EnsureDir(path string, name string) (attributes FileAttr
 		return
 	}
 
-	attributes, err = self.LookUp(fmt.Sprintf("%s/%s", path, name))
+	fullPath := fmt.Sprintf("%s/%s", path, name)
+	attributes, err = self.LookUp(fullPath)
 	if err != nil {
 		return
 	}
 
 	if attributes.Type != "FS_FILE_TYPE_DIRECTORY" {
-		err = fmt.Errorf("A non-directory exists at the requested path: %v", attributes)
+		err = fmt.Errorf("A non-directory exists at: %q, %v", fullPath, attributes.Type)
 	}
 
 	return
