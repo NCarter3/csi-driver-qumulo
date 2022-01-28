@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -182,8 +184,13 @@ func TestRestCreateQuota(t *testing.T) {
 	_, testDirId, cleanup := setupTest(t)
 	defer cleanup(t)
 
-	err := connection.CreateQuota(testDirId, 1024 * 1024 * 1024)
+	newLimit := uint64(1024 * 1024 * 1024)
+	err := connection.CreateQuota(testDirId, newLimit)
 	assertNoError(t, err)
+
+	limit, err := connection.GetQuota(testDirId)
+	assertNoError(t, err)
+	assert.Equal(t, limit, newLimit)
 }
 
 func TestRestCreateQuotaTwiceErrors(t *testing.T) {
@@ -209,22 +216,29 @@ func TestRestUpdateQuotaAfterCreateQuota(t *testing.T) {
 	_, testDirId, cleanup := setupTest(t)
 	defer cleanup(t)
 
-	err := connection.CreateQuota(testDirId, 1024 * 1024 * 1024)
+	newLimit := uint64(1024 * 1024 * 1024)
+	err := connection.CreateQuota(testDirId, newLimit)
 	assertNoError(t, err)
 
-	err = connection.UpdateQuota(testDirId, 1024 * 1024 * 1024)
+	err = connection.UpdateQuota(testDirId, newLimit)
 	assertNoError(t, err)
+
+	limit, err := connection.GetQuota(testDirId)
+	assertNoError(t, err)
+	assert.Equal(t, limit, newLimit)
 }
 
 func TestRestEnsureQuotaNewQuota(t *testing.T) {
 	_, testDirId, cleanup := setupTest(t)
 	defer cleanup(t)
 
-	err := connection.EnsureQuota(testDirId, 1024 * 1024 * 1024)
+	newLimit := uint64(1024 * 1024 * 1024)
+	err := connection.EnsureQuota(testDirId, newLimit)
 	assertNoError(t, err)
 
-	err = connection.UpdateQuota(testDirId, 1024 * 1024 * 1024)
+	limit, err := connection.GetQuota(testDirId)
 	assertNoError(t, err)
+	assert.Equal(t, limit, newLimit)
 }
 
 func TestRestEnsureQuotaAfterCreateQuota(t *testing.T) {
@@ -234,21 +248,29 @@ func TestRestEnsureQuotaAfterCreateQuota(t *testing.T) {
 	err := connection.CreateQuota(testDirId, 1024 * 1024 * 1024)
 	assertNoError(t, err)
 
-	err = connection.EnsureQuota(testDirId, 2 * 1024 * 1024 * 1024)
+	newLimit := uint64(2 * 1024 * 1024 * 1024)
+	err = connection.EnsureQuota(testDirId, newLimit)
 	assertNoError(t, err)
 
-	// XXX will need getquota at some point, can use in these tests.
+	limit, err := connection.GetQuota(testDirId)
+	assertNoError(t, err)
+	assert.Equal(t, limit, newLimit)
 }
 
 func TestRestEnsureQuotaTwice(t *testing.T) {
 	_, testDirId, cleanup := setupTest(t)
 	defer cleanup(t)
 
-	err := connection.EnsureQuota(testDirId, 2 * 1024 * 1024 * 1024)
+	newLimit := uint64(2 * 1024 * 1024 * 1024)
+	err := connection.EnsureQuota(testDirId, newLimit)
 	assertNoError(t, err)
 
-	err = connection.EnsureQuota(testDirId, 2 * 1024 * 1024 * 1024)
+	err = connection.EnsureQuota(testDirId, newLimit)
 	assertNoError(t, err)
+
+	limit, err := connection.GetQuota(testDirId)
+	assertNoError(t, err)
+	assert.Equal(t, limit, newLimit)
 }
 
 // XXX quota file conflicts? - probably not really possible

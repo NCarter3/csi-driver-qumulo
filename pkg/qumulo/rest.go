@@ -349,15 +349,32 @@ func (self *Connection) CreateFile(path string, name string) (attributes FileAtt
  *  FIGLET: Quotas
  */
 
-type CreateQuotaRequest struct {
+type QuotaBody struct {
 	Id                string `json:"id"`
 	Limit             string `json:"limit"`
+}
+
+func (self *Connection) GetQuota(id string) (limit uint64, err error) {
+	uri := fmt.Sprintf("/v1/files/quotas/%s", id)
+
+	response, err := self.Get(uri)
+
+	if err != nil {
+		return
+	}
+
+	var obj QuotaBody
+	json.Unmarshal(response, &obj)
+
+	limit, err = strconv.ParseUint(obj.Limit, 10, 64)
+
+	return
 }
 
 func (self *Connection) CreateQuota(id string, limit uint64) (err error) {
 	uri := "/v1/files/quotas/"
 
-	body := CreateQuotaRequest{Id: id, Limit: strconv.FormatUint(limit, 10)}
+	body := QuotaBody{Id: id, Limit: strconv.FormatUint(limit, 10)}
 
 	json_data, err := json.Marshal(body)
 	panicOnError(err)
@@ -370,7 +387,7 @@ func (self *Connection) CreateQuota(id string, limit uint64) (err error) {
 func (self *Connection) UpdateQuota(id string, limit uint64) (err error) {
 	uri := fmt.Sprintf("/v1/files/quotas/%s", id)
 
-	body := CreateQuotaRequest{Id: id, Limit: strconv.FormatUint(limit, 10)}
+	body := QuotaBody{Id: id, Limit: strconv.FormatUint(limit, 10)}
 
 	json_data, err := json.Marshal(body)
 	panicOnError(err)
