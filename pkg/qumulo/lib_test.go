@@ -83,7 +83,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func setupTest(t *testing.T) (testDirPath string, testDirId string, cleanup func(t *testing.T)) {
+func requireCluster(t *testing.T) (testDirPath string, testDirId string, cleanup func(t *testing.T)) {
 	if connection == nil {
 		t.Skip("requires qumulo server")
 		return

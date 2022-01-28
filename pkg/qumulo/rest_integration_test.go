@@ -16,7 +16,7 @@ import (
  */
 
 func TestRestCreateDir(t *testing.T) {
-	testDirPath, _, cleanup := setupTest(t)
+	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	attributes, err := connection.CreateDir(testDirPath, "bar")
@@ -27,7 +27,7 @@ func TestRestCreateDir(t *testing.T) {
 }
 
 func TestRestCreateDirTwiceErrors(t *testing.T) {
-	testDirPath, _, cleanup := setupTest(t)
+	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	_, err := connection.CreateDir(testDirPath, "bar")
@@ -38,7 +38,7 @@ func TestRestCreateDirTwiceErrors(t *testing.T) {
 }
 
 func TestRestEnsureDirNewDir(t *testing.T) {
-	testDirPath, _, cleanup := setupTest(t)
+	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	attributes, err := connection.EnsureDir(testDirPath, "somedir")
@@ -49,7 +49,7 @@ func TestRestEnsureDirNewDir(t *testing.T) {
 }
 
 func TestRestEnsureDirAfterCreateDir(t *testing.T) {
-	testDirPath, _, cleanup := setupTest(t)
+	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	attributes1, err := connection.EnsureDir(testDirPath, "somedir")
@@ -64,7 +64,7 @@ func TestRestEnsureDirAfterCreateDir(t *testing.T) {
 }
 
 func TestRestEnsureDirTwice(t *testing.T) {
-	testDirPath, _, cleanup := setupTest(t)
+	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	attributes1, err := connection.EnsureDir(testDirPath, "blah")
@@ -79,7 +79,7 @@ func TestRestEnsureDirTwice(t *testing.T) {
 }
 
 func TestRestCreateFile(t *testing.T) {
-	testDirPath, _, cleanup := setupTest(t)
+	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	attributes, err := connection.CreateFile(testDirPath, "notadir")
@@ -90,7 +90,7 @@ func TestRestCreateFile(t *testing.T) {
 }
 
 func TestRestEnsureDirWithFileConflict(t *testing.T) {
-	testDirPath, _, cleanup := setupTest(t)
+	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	_, err := connection.CreateFile(testDirPath, "x")
@@ -102,7 +102,7 @@ func TestRestEnsureDirWithFileConflict(t *testing.T) {
 }
 
 func TestRestCreateQuota(t *testing.T) {
-	_, testDirId, cleanup := setupTest(t)
+	_, testDirId, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	newLimit := uint64(1024 * 1024 * 1024)
@@ -115,7 +115,7 @@ func TestRestCreateQuota(t *testing.T) {
 }
 
 func TestRestCreateQuotaTwiceErrors(t *testing.T) {
-	_, testDirId, cleanup := setupTest(t)
+	_, testDirId, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	err := connection.CreateQuota(testDirId, 1024 * 1024 * 1024)
@@ -126,7 +126,7 @@ func TestRestCreateQuotaTwiceErrors(t *testing.T) {
 }
 
 func TestRestUpdateQuotaNoQuotaErrors(t *testing.T) {
-	_, testDirId, cleanup := setupTest(t)
+	_, testDirId, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	err := connection.UpdateQuota(testDirId, 1024 * 1024 * 1024)
@@ -134,7 +134,7 @@ func TestRestUpdateQuotaNoQuotaErrors(t *testing.T) {
 }
 
 func TestRestUpdateQuotaAfterCreateQuota(t *testing.T) {
-	_, testDirId, cleanup := setupTest(t)
+	_, testDirId, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	newLimit := uint64(1024 * 1024 * 1024)
@@ -150,7 +150,7 @@ func TestRestUpdateQuotaAfterCreateQuota(t *testing.T) {
 }
 
 func TestRestEnsureQuotaNewQuota(t *testing.T) {
-	_, testDirId, cleanup := setupTest(t)
+	_, testDirId, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	newLimit := uint64(1024 * 1024 * 1024)
@@ -163,7 +163,7 @@ func TestRestEnsureQuotaNewQuota(t *testing.T) {
 }
 
 func TestRestEnsureQuotaAfterCreateQuota(t *testing.T) {
-	_, testDirId, cleanup := setupTest(t)
+	_, testDirId, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	err := connection.CreateQuota(testDirId, 1024 * 1024 * 1024)
@@ -179,7 +179,7 @@ func TestRestEnsureQuotaAfterCreateQuota(t *testing.T) {
 }
 
 func TestRestEnsureQuotaTwice(t *testing.T) {
-	_, testDirId, cleanup := setupTest(t)
+	_, testDirId, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	newLimit := uint64(2 * 1024 * 1024 * 1024)
@@ -197,7 +197,7 @@ func TestRestEnsureQuotaTwice(t *testing.T) {
 // XXX quota file conflicts? - probably not really possible
 
 func TestRestTreeDeleteNotFoundPath(t *testing.T) {
-	testDirPath, _, cleanup := setupTest(t)
+	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
 	err := connection.TreeDeleteCreate(testDirPath + "/blah")
