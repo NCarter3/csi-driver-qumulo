@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,25 +32,31 @@ func assertRestError(t *testing.T, err error, expectedStatus int, expectedErrorC
 }
 
 var (
-	nocleanup   bool
-	host        string
-	port        int
-	username    string
-	password    string
-	logging     bool
-
 	connection *Connection
 	fixturedir  string
 	testnum     int
 )
 
 func TestMain(m *testing.M) {
+
+	// Get cluster connection settings from the environment first then allow override
+	// with flags. An empty host indicates no cluster which bypassess tests using requireCluster.
+
+	host     := os.Getenv("QUMULO_TEST_HOST")
+	portStr  := os.Getenv("QUMULO_TEST_PORT")
+	username := os.Getenv("QUMULO_TEST_USERNAME")
+	password := os.Getenv("QUMULO_TEST_PASSWORD")
+
+	var nocleanup bool
+	var logging   bool
+
+	flag.StringVar(&host,      "host",      host,       "Host to connect to")
+	flag.StringVar(&portStr,   "port",      portStr,    "Port to connect to")
+	flag.StringVar(&username,  "username",  username,   "Username to connect as")
+	flag.StringVar(&password,  "password",  password,   "Password to use")
 	flag.BoolVar  (&nocleanup, "nocleanup", false,      "Skip clean up of artifacts")
-	flag.StringVar(&host,      "host",      "",         "Host to connect to")
-	flag.IntVar   (&port,      "port",      8000,       "Port to connect to")
-	flag.StringVar(&username,  "username",  "admin",    "Username to connect as")
-	flag.StringVar(&password,  "password",  "Admin123", "Password to use")
 	flag.BoolVar  (&logging,   "logging",   false,      "Enable logging")
+
 	flag.Parse()
 
 	if !logging {
@@ -57,12 +64,26 @@ func TestMain(m *testing.M) {
 	}
 
 	if len(host) != 0 {
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if port == 0 {
+			log.Fatal("QUMULO_TEST_PORT is required with QUMULO_TEST_HOST");
+		}
+		if len(username) == 0 {
+			log.Fatal("QUMULO_TEST_USERNAME is required with QUMULO_TEST_HOST");
+		}
+		if len(password) == 0 {
+			log.Fatal("QUMULO_TEST_PASSWORD is required with QUMULO_TEST_HOST");
+		}
 
 		c := MakeConnection(host, port, username, password, new(http.Client))
 
-		_, err := c.CreateDir("/", "gotest")
+		_, err = c.CreateDir("/", "gotest")
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 
 		fixturedir = "/gotest"
