@@ -64,11 +64,6 @@ func newTestClient(t *testing.T, host string, port int, messages *[]Message) *ht
 	}
 }
 
-const (
-	testHost = "1.2.3.4"
-	testPort = 44
-)
-
 /*  _            _
  * | |_ ___  ___| |_ ___
  * | __/ _ \/ __| __/ __|
@@ -84,9 +79,9 @@ func TestRestAutoLoginSucces(t *testing.T) {
 		{ "/hi", 200, "", "" },
 		{ "/bye", 200, "", "" },
 	}
-	client := newTestClient(t, testHost, testPort, &messages)
+	client := newTestClient(t, "1.2.3.4", 44, &messages)
 
-	connection := MakeConnection(testHost, testPort, "bob", "yeruncle", client)
+	connection := MakeConnection("1.2.3.4", 44, "bob", "yeruncle", client)
 	_, err := connection.Get("/hi")
 	assert.NoError(t, err)
 	_, err = connection.Get("/bye")
@@ -100,9 +95,9 @@ func TestRestAutoLoginFail(t *testing.T) {
 		{ "/hi", 401, "", "" },
 		{ "/v1/session/login", 201, "{\"username\":\"bob\",\"password\":\"yeruncle\"}", ""},
 	}
-	client := newTestClient(t, testHost, testPort, &messages)
+	client := newTestClient(t, "1.2.3.4", 44, &messages)
 
-	connection := MakeConnection(testHost, testPort, "bob", "yeruncle", client)
+	connection := MakeConnection("1.2.3.4", 44, "bob", "yeruncle", client)
 	_, err := connection.Get("/hi")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Login failed: ")
