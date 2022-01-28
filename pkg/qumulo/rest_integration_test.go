@@ -3,6 +3,7 @@ package qumulo
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +18,8 @@ var (
 	port        int
 	username    string
 	password    string
+	logging     bool
+
 	connection *Connection
 	fixturedir  string
 	testnum     int
@@ -28,7 +31,12 @@ func TestMain(m *testing.M) {
 	flag.IntVar   (&port,      "port",      8000,       "Port to connect to")
 	flag.StringVar(&username,  "username",  "admin",    "Username to connect as")
 	flag.StringVar(&password,  "password",  "Admin123", "Password to use")
+	flag.BoolVar  (&logging,   "logging",   false,      "Enable logging")
 	flag.Parse()
+
+	if !logging {
+		log.SetOutput(ioutil.Discard)
+	}
 
 	if len(host) != 0 {
 
