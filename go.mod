@@ -3,6 +3,7 @@ module github.com/kubernetes-csi/csi-driver-qumulo
 go 1.16
 
 require (
+	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/container-storage-interface/spec v1.5.0
 	github.com/golang/protobuf v1.5.2
 	github.com/kubernetes-csi/csi-lib-utils v0.9.0

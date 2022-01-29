@@ -203,3 +203,11 @@ func TestRestTreeDeleteNotFoundPath(t *testing.T) {
 	err := testConnection.TreeDeleteCreate(testDirPath + "/blah")
 	assert.NoError(t, err)
 }
+
+func TestRestVersion(t *testing.T) {
+	_, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	_, err := testConnection.GetVersionInfo()
+	assert.NoError(t, err)
+}

@@ -10,7 +10,10 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
+
+	"github.com/blang/semver" // XXX scott: this is old, use newer module
 )
 
 type LoginRequest struct {
@@ -479,4 +482,46 @@ func (self *Connection) TreeDeleteCreate(path string) (err error) {
 	// XXX: it's possible that another tree delete is running on the id, handle that error
 
 	return err
+}
+
+/*                     _
+ * __   _____ _ __ ___(_) ___  _ __
+ * \ \ / / _ \ '__/ __| |/ _ \| '_ \
+ *  \ V /  __/ |  \__ \ | (_) | | | |
+ *   \_/ \___|_|  |___/_|\___/|_| |_|
+ *  FIGLET: version
+ */
+
+
+type QumuloVersionInfo struct {
+	Revision          string `json:"revision_id"`
+	Build             string `json:"build_id"`
+	Flavor            string `json:"flavor"`
+	BuildDate         string `json:"build_date"`
+}
+
+func (v *QumuloVersionInfo) GetSemanticVersion() (version semver.Version, err error) {
+	re := regexp.MustCompile("^Qumulo Core (.*)$")
+	tokens := re.FindStringSubmatch(v.Revision)
+	if tokens == nil {
+		err = fmt.Errorf("Could not decode version %q", v)
+		return
+	}
+
+	version, err = semver.Make(tokens[1])
+
+	return
+}
+
+func (self *Connection) GetVersionInfo() (versionInfo QumuloVersionInfo, err error) {
+	uri := "/v1/version"
+
+	responseData, err := self.Get(uri)
+	if err != nil {
+		return
+	}
+
+	json.Unmarshal(responseData, &versionInfo)
+
+	return
 }

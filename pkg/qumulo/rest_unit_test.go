@@ -105,12 +105,31 @@ func TestRestAutoLoginFail(t *testing.T) {
 	assertMessagesConsumed(t, messages)
 }
 
-/*  _       _                       _   _
- * (_)_ __ | |_ ___  __ _ _ __ __ _| |_(_) ___  _ __
- * | | '_ \| __/ _ \/ _` | '__/ _` | __| |/ _ \| '_ \
- * | | | | | ||  __/ (_| | | | (_| | |_| | (_) | | | |
- * |_|_| |_|\__\___|\__, |_|  \__,_|\__|_|\___/|_| |_|
- *                  |___/
- *  FIGLET: integration
- */
+func TestRestSemanticVersionBadRevsion1(t *testing.T) {
+	info := QumuloVersionInfo{Revision: "blah", Build: "x", Flavor: "y", BuildDate: "z"}
+	_, err := info.GetSemanticVersion()
+	assert.EqualError(t, err, "Could not decode version &{\"blah\" \"x\" \"y\" \"z\"}")
+}
 
+func TestRestSemanticVersionBadRevsion2(t *testing.T) {
+	info := QumuloVersionInfo{Revision: "Qumulo Core aasdfa"}
+	_, err := info.GetSemanticVersion()
+	assert.EqualError(t, err, "No Major.Minor.Patch elements found")
+}
+
+func TestRestSemanticVersionHappy(t *testing.T) {
+	info1 := QumuloVersionInfo{Revision: "Qumulo Core 2.5.1"}
+	info2 := QumuloVersionInfo{Revision: "Qumulo Core 1.2.3"}
+
+	v1, err := info1.GetSemanticVersion()
+	assert.NoError(t, err)
+	assert.Equal(t, v1.String(), "2.5.1")
+
+	v2, err := info2.GetSemanticVersion()
+	assert.NoError(t, err)
+	assert.Equal(t, v2.String(), "1.2.3")
+
+	if !v2.LT(v1) {
+		t.Fatalf("Unexpected version ordering %v !< %v", v2, v1)
+	}
+}
