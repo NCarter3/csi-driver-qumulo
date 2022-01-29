@@ -288,64 +288,43 @@ func TestValidateVolumeCapabilities(t *testing.T) {
 }
 
 func TestControllerGetCapabilities(t *testing.T) {
-	cases := []struct {
-		desc        string
-		req         *csi.ControllerGetCapabilitiesRequest
-		resp        *csi.ControllerGetCapabilitiesResponse
-		expectedErr error
-	}{
-		{
-			desc: "valid request",
-			req:  &csi.ControllerGetCapabilitiesRequest{},
-			resp: &csi.ControllerGetCapabilitiesResponse{
-				Capabilities: []*csi.ControllerServiceCapability{
-					{
-						Type: &csi.ControllerServiceCapability_Rpc{
-							Rpc: &csi.ControllerServiceCapability_RPC{
-								Type: csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
-							},
-						},
-					},
-					{
-						Type: &csi.ControllerServiceCapability_Rpc{
-							Rpc: &csi.ControllerServiceCapability_RPC{
-								Type: csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
-							},
-						},
-					},
-					{
-						Type: &csi.ControllerServiceCapability_Rpc{
-							Rpc: &csi.ControllerServiceCapability_RPC{
-								Type: csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
-							},
-						},
+	req := &csi.ControllerGetCapabilitiesRequest{}
+	expectedResp := &csi.ControllerGetCapabilitiesResponse{
+		Capabilities: []*csi.ControllerServiceCapability{
+			{
+				Type: &csi.ControllerServiceCapability_Rpc{
+					Rpc: &csi.ControllerServiceCapability_RPC{
+						Type: csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 					},
 				},
 			},
-			expectedErr: nil,
+			{
+				Type: &csi.ControllerServiceCapability_Rpc{
+					Rpc: &csi.ControllerServiceCapability_RPC{
+						Type: csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
+					},
+				},
+			},
+			{
+				Type: &csi.ControllerServiceCapability_Rpc{
+					Rpc: &csi.ControllerServiceCapability_RPC{
+						Type: csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
+					},
+				},
+			},
 		},
 	}
 
-	for _, test := range cases {
-		test := test //pin
-		t.Run(test.desc, func(t *testing.T) {
-			// Setup
-			cs := initTestController(t)
+	// Setup
+	cs := initTestController(t)
 
-			// Run
-			resp, err := cs.ControllerGetCapabilities(context.TODO(), test.req)
+	// Run
+	resp, err := cs.ControllerGetCapabilities(context.TODO(), req)
 
-			// Verify
-			if test.expectedErr == nil && err != nil {
-				t.Errorf("test %q failed: %v", test.desc, err)
-			}
-			if test.expectedErr != nil && err == nil {
-				t.Errorf("test %q failed; expected error %v, got success", test.desc, test.expectedErr)
-			}
-			if !reflect.DeepEqual(resp, test.resp) {
-				t.Errorf("test %q failed: got resp %+v, expected %+v", test.desc, resp, test.resp)
-			}
-		})
+	// Verify
+	assert.NoError(t, err)
+	if !reflect.DeepEqual(resp, expectedResp) {
+		t.Errorf("got resp %+v, expected %+v", resp, expectedResp)
 	}
 }
 
