@@ -180,7 +180,138 @@ func TestCreateVolume(t *testing.T) {
 	}
 }
 
-// XXX scott: expand volume
+/*  _____                            ___     __    _
+ * | ____|_  ___ __   __ _ _ __   __| \ \   / /__ | |_   _ _ __ ___   ___
+ * |  _| \ \/ / '_ \ / _` | '_ \ / _` |\ \ / / _ \| | | | | '_ ` _ \ / _ \
+ * | |___ >  <| |_) | (_| | | | | (_| | \ V / (_) | | |_| | | | | | |  __/
+ * |_____/_/\_\ .__/ \__,_|_| |_|\__,_|  \_/ \___/|_|\__,_|_| |_| |_|\___|
+ *            |_|
+ *  FIGLET: ExpandVolume
+ */
+
+func TestExpandVolumeVolumeIdMissing(t *testing.T) {
+	cs := initTestController(t)
+
+	req := &csi.ControllerExpandVolumeRequest{}
+
+	_, err := cs.ControllerExpandVolume(context.TODO(), req)
+	assert.Equal(t, err, status.Error(codes.InvalidArgument, "Volume ID missing in request"))
+}
+
+func TestExpandVolumeVolumeInvalidId(t *testing.T) {
+	cs := initTestController(t)
+
+	req := &csi.ControllerExpandVolumeRequest{VolumeId: "blah-blah"}
+
+	_, err := cs.ControllerExpandVolume(context.TODO(), req)
+	assert.Equal(t, err, status.Error(codes.NotFound, "Volume not found \"blah-blah\""))
+}
+
+func TestExpandVolumeVolumeNoLimit(t *testing.T) {
+	cs := initTestController(t)
+
+	volumeId := makeVolumeId("/some/path", "foobar")
+
+	req := &csi.ControllerExpandVolumeRequest{VolumeId: volumeId}
+
+	_, err := cs.ControllerExpandVolume(context.TODO(), req)
+	assert.Equal(t, err, status.Error(codes.InvalidArgument, "CapacityRange must be provided"))
+}
+
+func TestExpandVolumeMissingSecrets(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	cs := initTestController(t)
+
+	volumeId := makeVolumeId(testDirPath, "foobar")
+
+	req := &csi.ControllerExpandVolumeRequest{
+		VolumeId: volumeId,
+		CapacityRange: &csi.CapacityRange{RequiredBytes: 1024 * 1024 * 1024},
+		Secrets: map[string]string{},
+	}
+
+	_, err := cs.ControllerExpandVolume(context.TODO(), req)
+	assert.Equal(t, err, status.Error(codes.Unauthenticated, "username and password secrets missing"))
+}
+
+func TestExpandVolumeAuthFailure(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	cs := initTestController(t)
+
+	volumeId := makeVolumeId(testDirPath, "foobar")
+
+	req := &csi.ControllerExpandVolumeRequest{
+		VolumeId: volumeId,
+		CapacityRange: &csi.CapacityRange{RequiredBytes: 1024 * 1024 * 1024},
+		Secrets: map[string]string{
+			"username": testUsername,
+			"password": testPassword + "asdf",
+		},
+	}
+
+	_, err := cs.ControllerExpandVolume(context.TODO(), req)
+	// XXX scott: rework rest layer to return codes.Unauthenticated
+	assert.Contains(t, err.Error(), "Login failed")
+}
+
+func TestExpandVolumeVolumeDirectoryNotFound(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	cs := initTestController(t)
+
+	volumeId := makeVolumeId(testDirPath, "foobar")
+
+	req := &csi.ControllerExpandVolumeRequest{
+		VolumeId: volumeId,
+		CapacityRange: &csi.CapacityRange{RequiredBytes: 1024 * 1024 * 1024},
+		Secrets: map[string]string{
+			"username": testUsername,
+			"password": testPassword,
+		},
+	}
+
+	_, err := cs.ControllerExpandVolume(context.TODO(), req)
+	assert.Equal(t, err, status.Errorf(codes.NotFound,"Directory for volume %q is missing", volumeId))
+}
+
+func TestExpandVolumeVolumeHappyPath(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	cs := initTestController(t)
+
+	volumeId := makeVolumeId(testDirPath, "foobar")
+
+	req := &csi.ControllerExpandVolumeRequest{
+		VolumeId: volumeId,
+		CapacityRange: &csi.CapacityRange{RequiredBytes: 2 * 1024 * 1024 * 1024},
+		Secrets: map[string]string{
+			"username": testUsername,
+			"password": testPassword,
+		},
+	}
+
+	// Create dir and quota before operation.
+	attributes, err := testConnection.EnsureDir(testDirPath, "foobar")
+	assert.NoError(t, err)
+	err = testConnection.EnsureQuota(attributes.Id, 1024 * 1024 * 1024)
+
+	resp, err := cs.ControllerExpandVolume(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.Equal(t, resp, &csi.ControllerExpandVolumeResponse{
+		CapacityBytes: 2 * 1024 * 1024 * 1024,
+		NodeExpansionRequired: false,
+	})
+
+	newLimit, err := testConnection.GetQuota(attributes.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, newLimit, uint64(2 * 1024 * 1024 * 1024))
+}
 
 /*  ____       _      _     __     __    _
  * |  _ \  ___| | ___| |_ __\ \   / /__ | |_   _ _ __ ___   ___

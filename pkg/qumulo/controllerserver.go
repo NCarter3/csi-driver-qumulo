@@ -262,7 +262,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "volume id is empty")
+		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
 
 	qVol, err := cs.getQumuloVolumeFromID(volumeID)
@@ -282,15 +282,23 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 
 	attributes, err := connection.LookUp(cs.getVolumeRealPath(qVol))
 	if err != nil {
-		return nil, err // XXX
+		if errorIsRestErrorWithStatus(err, 404) {
+			err = status.Errorf(codes.NotFound, "Directory for volume %q is missing", qVol.id)
+		} else {
+			err = status.Errorf(codes.Internal, "Unhandled Error %v: %v", qVol.id, err.Error())
+		}
+
+		return nil, err
 	}
 
 	err = connection.EnsureQuota(attributes.Id, quotaLimit)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to set quota on %v: %v", qVol.id, err.Error())
+		if errorIsRestErrorWithStatus(err, 404) {
+			err = status.Errorf(codes.NotFound, "Directory for volume %q is missing", qVol.id)
+		} else {
+			err = status.Errorf(codes.Internal, "Unhandled Error %v: %v", qVol.id, err.Error())
+		}
 	}
-
-	// XXX ExpandInUsePersistentVolumes required somewhere
 
 	return &csi.ControllerExpandVolumeResponse{
 		CapacityBytes: int64(quotaLimit),
