@@ -185,7 +185,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
 
-	qVol, err := cs.getQumuloVolumeFromID(volumeID)
+	qVol, err := makeQumuloVolumeFromID(volumeID)
 	if err != nil {
 		// An invalid ID should be treated as doesn't exist
 		klog.Warningf("failed to get Qumulo volume for volume id %v deletion: %v", volumeID, err)
@@ -267,7 +267,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
 
-	qVol, err := cs.getQumuloVolumeFromID(volumeID)
+	qVol, err := makeQumuloVolumeFromID(volumeID)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "Volume not found %q", volumeID)
 	}
@@ -453,7 +453,7 @@ func (vol *qumuloVolume) qumuloVolumeToCSIVolume() *csi.Volume {
 	}
 }
 
-func (cs *ControllerServer) getQumuloVolumeFromID(id string) (*qumuloVolume, error) {
+func makeQumuloVolumeFromID(id string) (*qumuloVolume, error) {
 	volRegex := regexp.MustCompile("^v1:([^:]+):([0-9]+)//(.*)//(.*)//([^/]+)$")
 	tokens := volRegex.FindStringSubmatch(id)
 	if tokens == nil {

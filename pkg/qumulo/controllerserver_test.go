@@ -167,7 +167,7 @@ func TestCreateVolume(t *testing.T) {
 				t.Errorf("test %q failed: got %+v, expected %+v", test.name, ret, test.expectRet)
 			}
 
-			qVol, err := cs.getQumuloVolumeFromID(ret.Volume.VolumeId)
+			qVol, err := makeQumuloVolumeFromID(ret.Volume.VolumeId)
 			assert.NoError(t, err)
 
 			attributes, err := testConnection.LookUp(qVol.getVolumeRealPath())
@@ -334,7 +334,7 @@ func TestDeleteVolumeInvalidVolumeId(t *testing.T) {
 	cs := initTestController(t)
 
 	req := &csi.DeleteVolumeRequest{VolumeId: "invalid ignore per code"}
-	_, err := cs.getQumuloVolumeFromID(req.VolumeId)
+	_, err := makeQumuloVolumeFromID(req.VolumeId)
 	assert.Error(t, err)
 
 	resp, err := cs.DeleteVolume(context.TODO(), req)
@@ -398,7 +398,7 @@ func TestDeleteVolumeHappyPath(t *testing.T) {
 	}
 
 	// Create dir and test lookup before operation.
-	qVol, err := cs.getQumuloVolumeFromID(req.VolumeId)
+	qVol, err := makeQumuloVolumeFromID(req.VolumeId)
 	assert.NoError(t, err)
 	_, err = testConnection.EnsureDir(testDirPath, "foobar")
 	assert.NoError(t, err)
@@ -432,7 +432,7 @@ func TestDeleteVolumeMissingDirectory(t *testing.T) {
 	}
 
 	// No directory exists, should still be success.
-	qVol, err := cs.getQumuloVolumeFromID(req.VolumeId)
+	qVol, err := makeQumuloVolumeFromID(req.VolumeId)
 	assert.NoError(t, err)
 	_, err = testConnection.LookUp(qVol.getVolumeRealPath())
 	assert.True(t, errorIsRestErrorWithStatus(err, 404))
@@ -649,14 +649,11 @@ func TestGetQumuloVolumeFromID(t *testing.T) {
 		},
 	}
 
-	// XXX scott: we don't really need a controller for this function
-	cs := initTestController(t)
-
 	for _, test := range cases {
 		test := test //pin
 		t.Run(test.name, func(t *testing.T) {
 			// Run
-			ret, err := cs.getQumuloVolumeFromID(test.req)
+			ret, err := makeQumuloVolumeFromID(test.req)
 
 			// Verify
 			if len(test.expectErr) != 0 {
