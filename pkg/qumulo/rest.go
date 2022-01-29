@@ -5,8 +5,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -17,17 +17,17 @@ import (
 )
 
 type LoginRequest struct {
-	Username   string   `json:"username"`
-	Password   string   `json:"password"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type Connection struct {
-	Host         string
-	Port         int
-	Username     string
-	Password     string
-	token        string
-	client		 *http.Client
+	Host     string
+	Port     int
+	Username string
+	Password string
+	token    string
+	client   *http.Client
 }
 
 func MakeConnection(host string, port int, username string, password string, c *http.Client) Connection {
@@ -77,11 +77,11 @@ func errorIsRestErrorWithStatus(err error, statusCode int) bool {
 }
 
 type ErrorResponse struct {
-	Description       string   `json:"description"`
-	Module            string   `json:"module"`
-	ErrorClass        string   `json:"error_class"`
-	UserVisible       bool     `json:"user_visible"`
-	Stack             []string `json:"stack"`
+	Description string   `json:"description"`
+	Module      string   `json:"module"`
+	ErrorClass  string   `json:"error_class"`
+	UserVisible bool     `json:"user_visible"`
+	Stack       []string `json:"stack"`
 }
 
 func MakeRestError(status int, response []byte) RestError {
@@ -108,18 +108,18 @@ func (self *Connection) Login() error {
 
 	loginUrl := fmt.Sprintf("https://%s:%d/v1/session/login", self.Host, self.Port)
 
-	body := LoginRequest{Username: self. Username, Password: self.Password}
+	body := LoginRequest{Username: self.Username, Password: self.Password}
 
 	json_data, err := json.Marshal(body)
 	panicOnError(err)
 
 	response, err := self.client.Post(loginUrl, "application/json", bytes.NewBuffer(json_data))
 	if err != nil {
-		return fmt.Errorf("Login failed: %v", err);
+		return fmt.Errorf("Login failed: %v", err)
 	}
 
 	if response.StatusCode != 200 {
-		return fmt.Errorf("Login failed: %v", response.Status);
+		return fmt.Errorf("Login failed: %v", response.Status)
 	}
 
 	var res map[string]string
@@ -229,9 +229,9 @@ func (self *Connection) Delete(uri string) (result []byte, err error) {
  */
 
 type FileAttributes struct {
-	Id                string
-	Type		      string
-	Mode              string
+	Id   string
+	Type string
+	Mode string
 }
 
 func ParseFileAttributes(responseData []byte) FileAttributes {
@@ -239,9 +239,9 @@ func ParseFileAttributes(responseData []byte) FileAttributes {
 	json.Unmarshal(responseData, &result)
 
 	return FileAttributes{
-		Id:     result["id"].(string),
-		Type:   result["type"].(string),
-		Mode:   result["mode"].(string),
+		Id:   result["id"].(string),
+		Type: result["type"].(string),
+		Mode: result["mode"].(string),
 	}
 }
 
@@ -254,8 +254,8 @@ func ParseFileAttributes(responseData []byte) FileAttributes {
  */
 
 type CreateRequest struct {
-	Name              string `json:"name"`
-	Action            string `json:"action"`
+	Name   string `json:"name"`
+	Action string `json:"action"`
 }
 
 /*   ____                _       ____  _
@@ -354,8 +354,8 @@ func (self *Connection) CreateFile(path string, name string) (attributes FileAtt
  */
 
 type QuotaBody struct {
-	Id                string `json:"id"`
-	Limit             string `json:"limit"`
+	Id    string `json:"id"`
+	Limit string `json:"limit"`
 }
 
 func (self *Connection) GetQuota(id string) (limit uint64, err error) {
@@ -454,7 +454,7 @@ func (self *Connection) LookUp(path string) (attributes FileAttributes, err erro
  */
 
 type TreeDeleteCreateRequest struct {
-	Id                string `json:"id"`
+	Id string `json:"id"`
 }
 
 func (self *Connection) TreeDeleteCreate(path string) (err error) {
@@ -492,9 +492,8 @@ func (self *Connection) TreeDeleteCreate(path string) (err error) {
  *  FIGLET: version
  */
 
-
 type QumuloVersionInfo struct {
-	Revision          string `json:"revision_id"`
+	Revision string `json:"revision_id"`
 }
 
 func (v *QumuloVersionInfo) GetSemanticVersion() (version semver.Version, err error) {

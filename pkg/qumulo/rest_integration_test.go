@@ -119,10 +119,10 @@ func TestRestCreateQuotaTwiceErrors(t *testing.T) {
 	_, testDirId, cleanup := requireCluster(t)
 	defer cleanup(t)
 
-	err := testConnection.CreateQuota(testDirId, 1024 * 1024 * 1024)
+	err := testConnection.CreateQuota(testDirId, 1024*1024*1024)
 	assert.NoError(t, err)
 
-	err = testConnection.CreateQuota(testDirId, 1024 * 1024 * 1024)
+	err = testConnection.CreateQuota(testDirId, 1024*1024*1024)
 	assertRestError(t, err, 409, "api_quotas_quota_limit_already_set_error")
 }
 
@@ -130,7 +130,7 @@ func TestRestUpdateQuotaNoQuotaErrors(t *testing.T) {
 	_, testDirId, cleanup := requireCluster(t)
 	defer cleanup(t)
 
-	err := testConnection.UpdateQuota(testDirId, 1024 * 1024 * 1024)
+	err := testConnection.UpdateQuota(testDirId, 1024*1024*1024)
 	assertRestError(t, err, 404, "api_quotas_quota_limit_not_found_error")
 }
 
@@ -167,7 +167,7 @@ func TestRestEnsureQuotaAfterCreateQuota(t *testing.T) {
 	_, testDirId, cleanup := requireCluster(t)
 	defer cleanup(t)
 
-	err := testConnection.CreateQuota(testDirId, 1024 * 1024 * 1024)
+	err := testConnection.CreateQuota(testDirId, 1024*1024*1024)
 	assert.NoError(t, err)
 
 	newLimit := uint64(2 * 1024 * 1024 * 1024)

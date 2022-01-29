@@ -247,7 +247,7 @@ func TestExpandVolumeAuthFailure(t *testing.T) {
 	req := &csi.ControllerExpandVolumeRequest{
 		VolumeId:      volumeId,
 		CapacityRange: &csi.CapacityRange{RequiredBytes: 1024 * 1024 * 1024},
-		Secrets:       map[string]string{
+		Secrets: map[string]string{
 			"username": testUsername,
 			"password": testPassword + "asdf",
 		},
@@ -269,7 +269,7 @@ func TestExpandVolumeVolumeDirectoryNotFound(t *testing.T) {
 	req := &csi.ControllerExpandVolumeRequest{
 		VolumeId:      volumeId,
 		CapacityRange: &csi.CapacityRange{RequiredBytes: 1024 * 1024 * 1024},
-		Secrets:       map[string]string{
+		Secrets: map[string]string{
 			"username": testUsername,
 			"password": testPassword,
 		},
@@ -370,7 +370,7 @@ func TestDeleteVolumeAuthFailure(t *testing.T) {
 
 	req := &csi.DeleteVolumeRequest{
 		VolumeId: volumeId,
-		Secrets:  map[string]string{
+		Secrets: map[string]string{
 			"username": testUsername,
 			"password": testPassword + "asdf",
 		},
@@ -391,7 +391,7 @@ func TestDeleteVolumeHappyPath(t *testing.T) {
 
 	req := &csi.DeleteVolumeRequest{
 		VolumeId: volumeId,
-		Secrets:  map[string]string{
+		Secrets: map[string]string{
 			"username": testUsername,
 			"password": testPassword,
 		},
@@ -425,7 +425,7 @@ func TestDeleteVolumeMissingDirectory(t *testing.T) {
 
 	req := &csi.DeleteVolumeRequest{
 		VolumeId: volumeId,
-		Secrets:  map[string]string{
+		Secrets: map[string]string{
 			"username": testUsername,
 			"password": testPassword,
 		},

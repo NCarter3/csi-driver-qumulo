@@ -11,10 +11,10 @@ import (
 )
 
 type Message struct {
-	Uri              string
-	StatusCode       int
-	BodyIn			 string
-	BodyOut          string
+	Uri        string
+	StatusCode int
+	BodyIn     string
+	BodyOut    string
 }
 
 func assertMessagesConsumed(t *testing.T, messages []Message) {
@@ -50,8 +50,7 @@ func (self *FakeTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		}
 	}
 
-
-	return &http.Response {
+	return &http.Response{
 		StatusCode: message.StatusCode,
 		Body:       ioutil.NopCloser(bytes.NewBufferString(message.BodyOut)),
 		Header:     make(http.Header),
@@ -59,7 +58,7 @@ func (self *FakeTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 }
 
 func newTestClient(t *testing.T, host string, port int, messages *[]Message) *http.Client {
-	return &http.Client {
+	return &http.Client{
 		Transport: &FakeTransport{t, host, port, messages},
 	}
 }
@@ -73,11 +72,11 @@ func newTestClient(t *testing.T, host string, port int, messages *[]Message) *ht
  */
 
 func TestRestAutoLoginSucces(t *testing.T) {
-	messages := []Message {
-		{ "/hi", 401, "", "" },
-		{ "/v1/session/login", 200, "{\"username\":\"bob\",\"password\":\"yeruncle\"}", ""},
-		{ "/hi", 200, "", "" },
-		{ "/bye", 200, "", "" },
+	messages := []Message{
+		{"/hi", 401, "", ""},
+		{"/v1/session/login", 200, "{\"username\":\"bob\",\"password\":\"yeruncle\"}", ""},
+		{"/hi", 200, "", ""},
+		{"/bye", 200, "", ""},
 	}
 	client := newTestClient(t, "1.2.3.4", 44, &messages)
 
@@ -91,9 +90,9 @@ func TestRestAutoLoginSucces(t *testing.T) {
 }
 
 func TestRestAutoLoginFail(t *testing.T) {
-	messages := []Message {
-		{ "/hi", 401, "", "" },
-		{ "/v1/session/login", 201, "{\"username\":\"bob\",\"password\":\"yeruncle\"}", ""},
+	messages := []Message{
+		{"/hi", 401, "", ""},
+		{"/v1/session/login", 201, "{\"username\":\"bob\",\"password\":\"yeruncle\"}", ""},
 	}
 	client := newTestClient(t, "1.2.3.4", 44, &messages)
 

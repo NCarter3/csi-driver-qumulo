@@ -32,14 +32,14 @@ func assertRestError(t *testing.T, err error, expectedStatus int, expectedErrorC
 }
 
 var (
-	testHost        string
-	testPort        int
-	testUsername    string
-	testPassword    string
+	testHost     string
+	testPort     int
+	testUsername string
+	testPassword string
 
 	testConnection *Connection
-	testFixtureDir  string
-	testNumber      int
+	testFixtureDir string
+	testNumber     int
 )
 
 func TestMain(m *testing.M) {
@@ -47,22 +47,22 @@ func TestMain(m *testing.M) {
 	// Get cluster connection settings from the environment first then allow override
 	// with flags. An empty host indicates no cluster which bypassess tests using requireCluster.
 
-	testHost      = os.Getenv("QUMULO_TEST_HOST")
-	portStr      := os.Getenv("QUMULO_TEST_PORT")
-	testUsername  = os.Getenv("QUMULO_TEST_USERNAME")
-	testPassword  = os.Getenv("QUMULO_TEST_PASSWORD")
-	testroot     := os.Getenv("QUMULO_TEST_ROOT")
+	testHost = os.Getenv("QUMULO_TEST_HOST")
+	portStr := os.Getenv("QUMULO_TEST_PORT")
+	testUsername = os.Getenv("QUMULO_TEST_USERNAME")
+	testPassword = os.Getenv("QUMULO_TEST_PASSWORD")
+	testroot := os.Getenv("QUMULO_TEST_ROOT")
 
 	var nocleanup bool
-	var logging   bool
+	var logging bool
 
-	flag.StringVar(&testHost,     "host",      testHost,     "Host to connect to")
-	flag.StringVar(&portStr,      "port",      portStr,      "Port to connect to")
-	flag.StringVar(&testUsername, "username",  testUsername, "Username to connect as")
-	flag.StringVar(&testPassword, "password",  testPassword, "Password to use")
-	flag.StringVar(&testroot,     "testroot",  testroot,     "Root directory to put test dir in")
-	flag.BoolVar  (&nocleanup,    "nocleanup", false,        "Skip clean up of artifacts")
-	flag.BoolVar  (&logging,      "logging",   false,        "Enable logging")
+	flag.StringVar(&testHost, "host", testHost, "Host to connect to")
+	flag.StringVar(&portStr, "port", portStr, "Port to connect to")
+	flag.StringVar(&testUsername, "username", testUsername, "Username to connect as")
+	flag.StringVar(&testPassword, "password", testPassword, "Password to use")
+	flag.StringVar(&testroot, "testroot", testroot, "Root directory to put test dir in")
+	flag.BoolVar(&nocleanup, "nocleanup", false, "Skip clean up of artifacts")
+	flag.BoolVar(&logging, "logging", false, "Enable logging")
 
 	flag.Parse()
 
@@ -74,13 +74,13 @@ func TestMain(m *testing.M) {
 		}
 
 		if testPort == 0 {
-			log.Fatal("QUMULO_TEST_PORT is required with QUMULO_TEST_HOST");
+			log.Fatal("QUMULO_TEST_PORT is required with QUMULO_TEST_HOST")
 		}
 		if len(testUsername) == 0 {
-			log.Fatal("QUMULO_TEST_USERNAME is required with QUMULO_TEST_HOST");
+			log.Fatal("QUMULO_TEST_USERNAME is required with QUMULO_TEST_HOST")
 		}
 		if len(testPassword) == 0 {
-			log.Fatal("QUMULO_TEST_PASSWORD is required with QUMULO_TEST_HOST");
+			log.Fatal("QUMULO_TEST_PASSWORD is required with QUMULO_TEST_HOST")
 		}
 
 		c := MakeConnection(testHost, testPort, testUsername, testPassword, new(http.Client))
@@ -144,4 +144,3 @@ func requireCluster(t *testing.T) (testDirPath string, testDirId string, cleanup
 
 	return
 }
-
