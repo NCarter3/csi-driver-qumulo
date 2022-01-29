@@ -17,8 +17,6 @@ limitations under the License.
 package qumulo
 
 import (
-	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -52,11 +50,15 @@ func teardown() {
 	// XXX scott: did have mount removal - use in e2e tests? - see the fixture stuff in lib_test.go
 }
 
+func makeVolumeId(dirPath string, name string) string {
+	return fmt.Sprintf("v1:%s:%d//%s////%s", testHost, testPort, strings.Trim(dirPath, "/"), name)
+}
+
 func TestCreateVolume(t *testing.T) {
 	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
-	volumeId := fmt.Sprintf("v1:%s:%d//%s////foobar", testHost, testPort, strings.Trim(testDirPath, "/"))
+	volumeId := makeVolumeId(testDirPath, "foobar")
 
 	t.Logf("TEST PORT is %d", testPort)
 
@@ -142,9 +144,6 @@ func TestCreateVolume(t *testing.T) {
 	}
 
 	// XXX scott:
-	// * can test the directory and quota exist
-	// * will probably have cross talk of tests
-	// * so maybe separate tests
 	// * test idempotency
 	// * more cases and errors
 
@@ -158,71 +157,159 @@ func TestCreateVolume(t *testing.T) {
 			ret, err := cs.CreateVolume(context.TODO(), test.makeReq())
 
 			// Verify
-			t.Log(ret)
 			if len(test.expectErr) != 0 {
 				assert.EqualError(t, err, test.expectErr)
-			} else {
-				assert.NoError(t, err)
-				if !reflect.DeepEqual(ret, test.expectRet) {
-					t.Errorf("test %q failed: got %+v, expected %+v", test.name, ret, test.expectRet)
-				}
+				return
 			}
+
+			assert.NoError(t, err)
+			if !reflect.DeepEqual(ret, test.expectRet) {
+				t.Errorf("test %q failed: got %+v, expected %+v", test.name, ret, test.expectRet)
+			}
+
+			qVol, err := cs.getQumuloVolumeFromID(ret.Volume.VolumeId)
+			assert.NoError(t, err)
+
+			attributes, err := testConnection.LookUp(cs.getVolumeRealPath(qVol))
+			assert.NoError(t, err)
+
+			quotaLimit, err := testConnection.GetQuota(attributes.Id)
+			assert.NoError(t, err)
+			assert.Equal(t, quotaLimit, uint64(1024 * 1024 * 1024))
 		})
 	}
 }
 
 // XXX scott: expand volume
 
-func TestDeleteVolume(t *testing.T) {
-	// XXX scott: all of this
+/*  ____       _      _     __     __    _
+ * |  _ \  ___| | ___| |_ __\ \   / /__ | |_   _ _ __ ___   ___
+ * | | | |/ _ \ |/ _ \ __/ _ \ \ / / _ \| | | | | '_ ` _ \ / _ \
+ * | |_| |  __/ |  __/ ||  __/\ V / (_) | | |_| | | | | | |  __/
+ * |____/ \___|_|\___|\__\___| \_/ \___/|_|\__,_|_| |_| |_|\___|
+ *  FIGLET: DeleteVolume
+ */
 
-	cases := []struct {
-		desc        string
-		req         *csi.DeleteVolumeRequest
-		resp        *csi.DeleteVolumeResponse
-		expectedErr error
-	}{
-		{
-			desc:        "Volume ID missing",
-			req:         &csi.DeleteVolumeRequest{},
-			resp:        nil,
-			expectedErr: status.Error(codes.InvalidArgument, "Volume ID missing in request"),
-		},
-		{
-			desc:        "Valid request",
-			req:         &csi.DeleteVolumeRequest{VolumeId: testVolumeID},
-			resp:        &csi.DeleteVolumeResponse{},
-			expectedErr: nil,
+func TestDeleteVolumeVolumeIdMissing(t *testing.T) {
+	cs := initTestController(t)
+
+	req := &csi.DeleteVolumeRequest{}
+
+	_, err := cs.DeleteVolume(context.TODO(), req)
+	assert.Equal(t, err, status.Error(codes.InvalidArgument, "Volume ID missing in request"))
+}
+
+func TestDeleteVolumeInvalidVolumeId(t *testing.T) {
+	cs := initTestController(t)
+
+	req := &csi.DeleteVolumeRequest{VolumeId: "invalid ignore per code"}
+	_, err := cs.getQumuloVolumeFromID(req.VolumeId)
+	assert.Error(t, err)
+
+	resp, err := cs.DeleteVolume(context.TODO(), req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, resp, &csi.DeleteVolumeResponse{})
+}
+
+func TestDeleteVolumeMissingSecrets(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	cs := initTestController(t)
+
+	volumeId := makeVolumeId(testDirPath, "foobar")
+
+	req := &csi.DeleteVolumeRequest{
+		VolumeId: volumeId,
+		Secrets: map[string]string{},
+	}
+
+	_, err := cs.DeleteVolume(context.TODO(), req)
+	assert.Equal(t, err, status.Error(codes.Unauthenticated, "username and password secrets missing"))
+}
+
+func TestDeleteVolumeAuthFailure(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	cs := initTestController(t)
+
+	volumeId := makeVolumeId(testDirPath, "foobar")
+
+	req := &csi.DeleteVolumeRequest{
+		VolumeId: volumeId,
+		Secrets: map[string]string{
+			"username": testUsername,
+			"password": testPassword + "asdf",
 		},
 	}
 
-	for _, test := range cases {
-		test := test //pin
-		workingMountDir := "/tmp" // XXX scott
-		t.Run(test.desc, func(t *testing.T) {
-			// Setup
-			cs := initTestController(t)
-			_ = os.MkdirAll(filepath.Join(workingMountDir, testCSIVolume), os.ModePerm)
-			_, _ = os.Create(filepath.Join(workingMountDir, testCSIVolume, testCSIVolume))
+	_, err := cs.DeleteVolume(context.TODO(), req)
+	// XXX scott: rework rest layer to return codes.Unauthenticated
+	assert.Contains(t, err.Error(), "Login failed")
+}
 
-			// Run
-			resp, err := cs.DeleteVolume(context.TODO(), test.req)
+func TestDeleteVolumeHappyPath(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
 
-			// Verify
-			if test.expectedErr == nil && err != nil {
-				t.Errorf("test %q failed: %v", test.desc, err)
-			}
-			if test.expectedErr != nil && err == nil {
-				t.Errorf("test %q failed; expected error %v, got success", test.desc, test.expectedErr)
-			}
-			if !reflect.DeepEqual(resp, test.resp) {
-				t.Errorf("test %q failed: got resp %+v, expected %+v", test.desc, resp, test.resp)
-			}
-			if _, err := os.Stat(filepath.Join(workingMountDir, testCSIVolume, testCSIVolume)); test.expectedErr == nil && !os.IsNotExist(err) {
-				t.Errorf("test %q failed: expected volume subdirectory deleted, it still exists", test.desc)
-			}
-		})
+	cs := initTestController(t)
+
+	volumeId := makeVolumeId(testDirPath, "foobar")
+
+	req := &csi.DeleteVolumeRequest{
+		VolumeId: volumeId,
+		Secrets: map[string]string{
+			"username": testUsername,
+			"password": testPassword,
+		},
 	}
+
+	// Create dir and test lookup before operation.
+	qVol, err := cs.getQumuloVolumeFromID(req.VolumeId)
+	assert.NoError(t, err)
+	_, err = testConnection.EnsureDir(testDirPath, "foobar")
+	assert.NoError(t, err)
+	_, err = testConnection.LookUp(cs.getVolumeRealPath(qVol))
+	assert.NoError(t, err)
+
+	// Run
+	resp, err := cs.DeleteVolume(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.Equal(t, resp, &csi.DeleteVolumeResponse{})
+
+	// Directory deleted
+	_, err = testConnection.LookUp(cs.getVolumeRealPath(qVol))
+	assert.True(t, errorIsRestErrorWithStatus(err, 404))
+}
+
+func TestDeleteVolumeMissingDirectory(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	cs := initTestController(t)
+
+	volumeId := makeVolumeId(testDirPath, "foobar")
+
+	req := &csi.DeleteVolumeRequest{
+		VolumeId: volumeId,
+		Secrets: map[string]string{
+			"username": testUsername,
+			"password": testPassword,
+		},
+	}
+
+	// No directory exists, should still be success.
+	qVol, err := cs.getQumuloVolumeFromID(req.VolumeId)
+	assert.NoError(t, err)
+	_, err = testConnection.LookUp(cs.getVolumeRealPath(qVol))
+	assert.True(t, errorIsRestErrorWithStatus(err, 404))
+
+	// Run
+	resp, err := cs.DeleteVolume(context.TODO(), req)
+	assert.NoError(t, err)
+	assert.Equal(t, resp, &csi.DeleteVolumeResponse{})
 }
 
 func TestValidateVolumeCapabilities(t *testing.T) {

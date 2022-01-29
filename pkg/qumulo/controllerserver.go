@@ -180,7 +180,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
-		return nil, status.Error(codes.InvalidArgument, "volume id is empty")
+		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
 
 	qVol, err := cs.getQumuloVolumeFromID(volumeID)
