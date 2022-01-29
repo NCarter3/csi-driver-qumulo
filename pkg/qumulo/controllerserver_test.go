@@ -170,7 +170,7 @@ func TestCreateVolume(t *testing.T) {
 			qVol, err := cs.getQumuloVolumeFromID(ret.Volume.VolumeId)
 			assert.NoError(t, err)
 
-			attributes, err := testConnection.LookUp(cs.getVolumeRealPath(qVol))
+			attributes, err := testConnection.LookUp(qVol.getVolumeRealPath())
 			assert.NoError(t, err)
 
 			quotaLimit, err := testConnection.GetQuota(attributes.Id)
@@ -402,7 +402,7 @@ func TestDeleteVolumeHappyPath(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = testConnection.EnsureDir(testDirPath, "foobar")
 	assert.NoError(t, err)
-	_, err = testConnection.LookUp(cs.getVolumeRealPath(qVol))
+	_, err = testConnection.LookUp(qVol.getVolumeRealPath())
 	assert.NoError(t, err)
 
 	// Run
@@ -411,7 +411,7 @@ func TestDeleteVolumeHappyPath(t *testing.T) {
 	assert.Equal(t, resp, &csi.DeleteVolumeResponse{})
 
 	// Directory deleted
-	_, err = testConnection.LookUp(cs.getVolumeRealPath(qVol))
+	_, err = testConnection.LookUp(qVol.getVolumeRealPath())
 	assert.True(t, errorIsRestErrorWithStatus(err, 404))
 }
 
@@ -434,7 +434,7 @@ func TestDeleteVolumeMissingDirectory(t *testing.T) {
 	// No directory exists, should still be success.
 	qVol, err := cs.getQumuloVolumeFromID(req.VolumeId)
 	assert.NoError(t, err)
-	_, err = testConnection.LookUp(cs.getVolumeRealPath(qVol))
+	_, err = testConnection.LookUp(qVol.getVolumeRealPath())
 	assert.True(t, errorIsRestErrorWithStatus(err, 404))
 
 	// Run
@@ -963,4 +963,79 @@ func TestNewQumuloVolume(t *testing.T) {
 	}
 }
 
-// case ins
+func TestGetVolumeRealPathEmpty(t *testing.T) {
+	vol := qumuloVolume{
+		id:                   "v1:somserver:8000////d/e/f//vol1",
+		server:               "somserver",
+		restPort:             8000,
+		storeRealPath:        "",
+		storeMountPath:       "d/e/f",
+		name:                 "vol1",
+	}
+
+	assert.Equal(t, vol.getVolumeRealPath(), "/vol1")
+}
+
+func TestGetVolumeRealPathNonEmpty(t *testing.T) {
+	vol := qumuloVolume{
+		id:                   "v1:somserver:8000////d/e/f//vol1",
+		server:               "somserver",
+		restPort:             8000,
+		storeRealPath:        "hello/world",
+		storeMountPath:       "d/e/f",
+		name:                 "vol1",
+	}
+
+	assert.Equal(t, vol.getVolumeRealPath(), "/hello/world/vol1")
+}
+
+func TestGetVolumeSharePathEmpty(t *testing.T) {
+	vol := qumuloVolume{
+		id:                   "v1:somserver:8000////d/e/f//vol1",
+		server:               "somserver",
+		restPort:             8000,
+		storeRealPath:        "d/e/f",
+		storeMountPath:       "",
+		name:                 "vol1",
+	}
+
+	assert.Equal(t, vol.getVolumeSharePath(), "/vol1")
+}
+
+func TestGetVolumeShareNonPathEmpty(t *testing.T) {
+	vol := qumuloVolume{
+		id:                   "v1:somserver:8000////d/e/f//vol1",
+		server:               "somserver",
+		restPort:             8000,
+		storeRealPath:        "d/e/f",
+		storeMountPath:       "x/y/z",
+		name:                 "vol1",
+	}
+
+	assert.Equal(t, vol.getVolumeSharePath(), "/x/y/z/vol1")
+}
+
+func TestQumuloVolumeToCSIVolume(t *testing.T) {
+	vol := qumuloVolume{
+		id:                   "v1:somserver:8000////d/e/f//vol1",
+		server:               "somserver",
+		restPort:             8000,
+		storeRealPath:        "d/e/f",
+		storeMountPath:       "x/y/z",
+		name:                 "vol1",
+	}
+
+	assert.Equal(
+		t,
+		vol.qumuloVolumeToCSIVolume(),
+		&csi.Volume{
+			CapacityBytes: 0,
+			VolumeId:      "v1:somserver:8000////d/e/f//vol1",
+			VolumeContext: map[string]string{
+				paramServer: "somserver",
+				paramShare:  "/x/y/z/vol1",
+			},
+		},
+	)
+}
+

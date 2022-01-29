@@ -35,6 +35,8 @@ import (
 
 // XXX scott:
 // o use better version of semver than blang
+// o GetCapacity
+// o CreateVolume - test Capabilities
 // o add copyright to all files
 // o cache connections? 1 user at a time - could use auth file too
 // o error type/code for fmt.Errorf uses
@@ -173,7 +175,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	// XXX scott: chmod 0777 new directory?
 
-	return &csi.CreateVolumeResponse{Volume: cs.qumuloVolumeToCSIVolume(qVol)}, nil
+	return &csi.CreateVolumeResponse{Volume: qVol.qumuloVolumeToCSIVolume()}, nil
 }
 
 // DeleteVolume delete a volume
@@ -195,7 +197,7 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, err
 	}
 
-	path := cs.getVolumeRealPath(qVol)
+	path := qVol.getVolumeRealPath()
 	klog.V(2).Infof("Removing subdirectory at %v with tree delete", path)
 
 	err = connection.TreeDeleteCreate(path)
@@ -280,7 +282,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 		return nil, err
 	}
 
-	attributes, err := connection.LookUp(cs.getVolumeRealPath(qVol))
+	attributes, err := connection.LookUp(qVol.getVolumeRealPath())
 	if err != nil {
 		if errorIsRestErrorWithStatus(err, 404) {
 			err = status.Errorf(codes.NotFound, "Directory for volume %q is missing", qVol.id)
@@ -431,22 +433,22 @@ func newQumuloVolume(name string, params map[string]string) (*qumuloVolume, erro
 	return vol, nil
 }
 
-func (cs *ControllerServer) getVolumeRealPath(vol *qumuloVolume) string {
+func (vol *qumuloVolume) getVolumeRealPath() string {
 	return filepath.Join(string(filepath.Separator), vol.storeRealPath, vol.name)
 }
 
 // Get user-visible share path for the volume
-func (cs *ControllerServer) getVolumeSharePath(vol *qumuloVolume) string {
+func (vol *qumuloVolume) getVolumeSharePath() string {
 	return filepath.Join(string(filepath.Separator), vol.storeMountPath, vol.name)
 }
 
-func (cs *ControllerServer) qumuloVolumeToCSIVolume(vol *qumuloVolume) *csi.Volume {
+func (vol *qumuloVolume) qumuloVolumeToCSIVolume() *csi.Volume {
 	return &csi.Volume{
 		CapacityBytes: 0, // by setting it to zero, Provisioner will use PVC requested size as PV size
 		VolumeId:      vol.id,
 		VolumeContext: map[string]string{
 			paramServer: vol.server,
-			paramShare:  cs.getVolumeSharePath(vol),
+			paramShare:  vol.getVolumeSharePath(),
 		},
 	}
 }
