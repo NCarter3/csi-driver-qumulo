@@ -139,9 +139,9 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
-	qVol, err := cs.newQumuloVolume(name, req.GetParameters())
+	qVol, err := newQumuloVolume(name, req.GetParameters())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, err
 	}
 
 	// To get this feature, we need some kind of clone in the product.
@@ -344,7 +344,7 @@ func (cs *ControllerServer) validateVolumeCapability(c *csi.VolumeCapability) er
 // Volume ID formats:
 // v1:server:restPort//storeRealPath//storeMountPath//name
 
-func (cs *ControllerServer) newQumuloVolume(name string, params map[string]string) (*qumuloVolume, error) {
+func newQumuloVolume(name string, params map[string]string) (*qumuloVolume, error) {
 	var (
 		server         string
 		storeRealPath  string
@@ -369,37 +369,55 @@ func (cs *ControllerServer) newQumuloVolume(name string, params map[string]strin
 		case paramRestPort:
 			restPort, err = strconv.Atoi(v)
 			if err != nil {
-				return nil, fmt.Errorf("invalid port %q", v)
+				return nil, status.Errorf(codes.InvalidArgument, "invalid port %q", v)
 			}
 		default:
-			return nil, fmt.Errorf("invalid parameter %q", k)
+			return nil, status.Errorf(codes.InvalidArgument, "invalid parameter %q", k)
 		}
 	}
 
-	// Validate required parameters
 	if server == "" {
-		return nil, fmt.Errorf("%v is a required parameter", paramServer)
+		return nil, status.Errorf(codes.InvalidArgument, "%s is a required parameter", paramServer)
 	}
 
 	if storeRealPath == "" {
-		return nil, fmt.Errorf("%v is a required parameter", paramStoreRealPath)
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			"%s is a required parameter",
+			paramStoreRealPath,
+		)
 	}
 	if !strings.HasPrefix(storeRealPath, "/") {
-		return nil, fmt.Errorf("parameter %v (%q) must be start with '/'", paramStoreRealPath, storeRealPath)
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			"%s (%q) must start with a '/'",
+			paramStoreRealPath,
+			storeRealPath,
+		)
 	}
-
-	storeRealPath = strings.Trim(storeRealPath, "/")
 
 	if storeMountPath == "" {
 		storeMountPath = storeRealPath
-	} else {
-		if !strings.HasPrefix(storeMountPath, "/") {
-			return nil, fmt.Errorf("parameter %v (%q) must be start with '/'", paramStoreMountPath, storeMountPath)
-		}
-		storeMountPath = strings.Trim(storeMountPath, "/")
 	}
 
-	id := "v1:" + server + ":" + strconv.Itoa(restPort) + "//" + storeRealPath + "//" + storeMountPath + "//" + name
+	if !strings.HasPrefix(storeMountPath, "/") {
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			"%s (%q) must start with a '/'",
+			paramStoreMountPath,
+			storeMountPath,
+		)
+	}
+
+	storeRealPath = strings.Trim(storeRealPath, "/")
+	storeMountPath = strings.Trim(storeMountPath, "/")
+
+	re := regexp.MustCompile("(///*)")
+	storeRealPath = re.ReplaceAllLiteralString(storeRealPath, "/")
+	storeMountPath = re.ReplaceAllLiteralString(storeMountPath, "/")
+
+	id := "v1:" + server + ":" + strconv.Itoa(restPort) +
+		  "//" + storeRealPath + "//" + storeMountPath + "//" + name
 
 	vol := &qumuloVolume{
 		id:                   id,

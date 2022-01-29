@@ -443,6 +443,20 @@ func TestDeleteVolumeMissingDirectory(t *testing.T) {
 	assert.Equal(t, resp, &csi.DeleteVolumeResponse{})
 }
 
+/* __     __    _ _     _       _     __     __    _
+ * \ \   / /_ _| (_) __| | __ _| |_ __\ \   / /__ | |_   _ _ __ ___   ___
+ *  \ \ / / _` | | |/ _` |/ _` | __/ _ \ \ / / _ \| | | | | '_ ` _ \ / _ \
+ *   \ V / (_| | | | (_| | (_| | ||  __/\ V / (_) | | |_| | | | | | |  __/
+ *    \_/ \__,_|_|_|\__,_|\__,_|\__\___| \_/ \___/|_|\__,_|_| |_| |_|\___|
+ *   ____                  _     _ _ _ _   _
+ *  / ___|__ _ _ __   __ _| |__ (_) (_) |_(_) ___  ___
+ * | |   / _` | '_ \ / _` | '_ \| | | | __| |/ _ \/ __|
+ * | |__| (_| | |_) | (_| | |_) | | | | |_| |  __/\__ \
+ *  \____\__,_| .__/ \__,_|_.__/|_|_|_|\__|_|\___||___/
+ *            |_|
+ *  FIGLET: ValidateVolumeCapabilities
+ */
+
 func TestValidateVolumeCapabilities(t *testing.T) {
 	cases := []struct {
 		desc        string
@@ -505,6 +519,20 @@ func TestValidateVolumeCapabilities(t *testing.T) {
 	}
 }
 
+/*   ____            _             _ _
+ *  / ___|___  _ __ | |_ _ __ ___ | | | ___ _ __
+ * | |   / _ \| '_ \| __| '__/ _ \| | |/ _ \ '__|
+ * | |__| (_) | | | | |_| | | (_) | | |  __/ |
+ *  \____\___/|_| |_|\__|_|  \___/|_|_|\___|_|
+ *   ____      _    ____                  _     _ _ _ _
+ *  / ___| ___| |_ / ___|__ _ _ __   __ _| |__ (_) (_) |_ ___  ___
+ * | |  _ / _ \ __| |   / _` | '_ \ / _` | '_ \| | | | __/ _ \/ __|
+ * | |_| |  __/ |_| |__| (_| | |_) | (_| | |_) | | | | ||  __/\__ \
+ *  \____|\___|\__|\____\__,_| .__/ \__,_|_.__/|_|_|_|\__\___||___/
+ *                           |_|
+ *  FIGLET: ControllerGetCapabilites
+ */
+
 func TestControllerGetCapabilities(t *testing.T) {
 	req := &csi.ControllerGetCapabilitiesRequest{}
 	expectedResp := &csi.ControllerGetCapabilitiesResponse{
@@ -545,6 +573,15 @@ func TestControllerGetCapabilities(t *testing.T) {
 		t.Errorf("got resp %+v, expected %+v", resp, expectedResp)
 	}
 }
+
+/*  _   _      _
+ * | | | | ___| |_ __   ___ _ __ ___
+ * | |_| |/ _ \ | '_ \ / _ \ '__/ __|
+ * |  _  |  __/ | |_) |  __/ |  \__ \
+ * |_| |_|\___|_| .__/ \___|_|  |___/
+ *              |_|
+ *  FIGLET: Helpers
+ */
 
 func TestGetQumuloVolumeFromID(t *testing.T) {
 	cases := []struct {
@@ -707,3 +744,223 @@ func TestGetQuotaLimit(t *testing.T) {
 		})
 	}
 }
+
+func TestNewQumuloVolume(t *testing.T) {
+	cases := []struct {
+		name       string
+		volName    string
+		params     map[string]string
+		expectErr  error
+		expectVol *qumuloVolume
+	}{
+		{
+			name:     "non-numeric port",
+			volName:  "vol1",
+			params:   map[string]string{
+				"restport": "x y",
+			},
+			expectErr: status.Error(codes.InvalidArgument, "invalid port \"x y\""),
+			expectVol: nil,
+		},
+		{
+			name:     "unknown parameter",
+			volName:  "vol1",
+			params:   map[string]string{
+				"blah": "blah",
+			},
+			expectErr: status.Error(codes.InvalidArgument, "invalid parameter \"blah\""),
+			expectVol: nil,
+		},
+		{
+			name:     "server is required parameter",
+			volName:  "vol1",
+			params:   map[string]string{
+				"StoreRealPath": "/foo",
+			},
+			expectErr: status.Error(codes.InvalidArgument, "server is a required parameter"),
+			expectVol: nil,
+		},
+		{
+			name:     "storerealpath is required parameter",
+			volName:  "vol1",
+			params:   map[string]string{
+				"server": "foo",
+			},
+			expectErr: status.Error(codes.InvalidArgument, "storerealpath is a required parameter"),
+			expectVol: nil,
+		},
+		{
+			name:     "storerealpath must start with slash",
+			volName:  "vol1",
+			params:   map[string]string{
+				"server": "foo",
+				"StoreRealPath": "foo",
+			},
+			expectErr: status.Error(
+				codes.InvalidArgument,
+				"storerealpath (\"foo\") must start with a '/'",
+			),
+			expectVol: nil,
+		},
+		{
+			name:     "storemountpath must start with slash",
+			volName:  "vol1",
+			params:   map[string]string{
+				"server": "foo",
+				"StoreRealPath": "/foo",
+				"storemountpath": "blah",
+			},
+			expectErr: status.Error(
+				codes.InvalidArgument,
+				"storemountpath (\"blah\") must start with a '/'",
+			),
+			expectVol: nil,
+		},
+		{
+			name:     "default path and mount",
+			volName:  "vol1",
+			params:   map[string]string{
+				"server": "somserver",
+				"StoreRealPath": "/foo/bar",
+			},
+			expectErr: nil,
+			expectVol: &qumuloVolume{
+				id:                   "v1:somserver:8000//foo/bar//foo/bar//vol1",
+				server:               "somserver",
+				restPort:             8000,
+				storeRealPath:        "foo/bar",
+				storeMountPath:       "foo/bar",
+				name:                 "vol1",
+			},
+		},
+		{
+			name:     "custom port",
+			volName:  "vol1",
+			params:   map[string]string{
+				"server": "somserver",
+				"StoreRealPath": "/foo/bar",
+				"restport": "1234",
+			},
+			expectErr: nil,
+			expectVol: &qumuloVolume{
+				id:                   "v1:somserver:1234//foo/bar//foo/bar//vol1",
+				server:               "somserver",
+				restPort:             1234,
+				storeRealPath:        "foo/bar",
+				storeMountPath:       "foo/bar",
+				name:                 "vol1",
+			},
+		},
+		{
+			name:     "root path and default mount",
+			volName:  "vol1",
+			params:   map[string]string{
+				"server": "somserver",
+				"StoreRealPath": "/",
+			},
+			expectErr: nil,
+			expectVol: &qumuloVolume{
+				id:                   "v1:somserver:8000//////vol1",
+				server:               "somserver",
+				restPort:             8000,
+				storeRealPath:        "",
+				storeMountPath:       "",
+				name:                 "vol1",
+			},
+		},
+		{
+			name:     "root path and mount",
+			volName:  "vol1",
+			params:   map[string]string{
+				"server": "somserver",
+				"StoreRealPath": "/",
+				"storeMountPath": "/",
+			},
+			expectErr: nil,
+			expectVol: &qumuloVolume{
+				id:                   "v1:somserver:8000//////vol1",
+				server:               "somserver",
+				restPort:             8000,
+				storeRealPath:        "",
+				storeMountPath:       "",
+				name:                 "vol1",
+			},
+		},
+		{
+			name:     "path and mount",
+			volName:  "vol1",
+			params:   map[string]string{
+				"server": "somserver",
+				"StoreRealPath": "/x/y",
+				"storeMountPath": "/y/z",
+			},
+			expectErr: nil,
+			expectVol: &qumuloVolume{
+				id:                   "v1:somserver:8000//x/y//y/z//vol1",
+				server:               "somserver",
+				restPort:             8000,
+				storeRealPath:        "x/y",
+				storeMountPath:       "y/z",
+				name:                 "vol1",
+			},
+		},
+		{
+			name:     "extra leading and trailing slashes",
+			volName:  "vol1",
+			params:   map[string]string{
+				"server": "somserver",
+				"StoreRealPath": "///x/y/",
+				"storeMountPath": "//y/z///",
+			},
+			expectErr: nil,
+			expectVol: &qumuloVolume{
+				id:                   "v1:somserver:8000//x/y//y/z//vol1",
+				server:               "somserver",
+				restPort:             8000,
+				storeRealPath:        "x/y",
+				storeMountPath:       "y/z",
+				name:                 "vol1",
+			},
+		},
+		{
+			name:     "extra interior slashes",
+			volName:  "vol1",
+			params:   map[string]string{
+				"server": "somserver",
+				"StoreRealPath": "/a//b///c",
+				"storeMountPath": "/d//e///f",
+			},
+			expectErr: nil,
+			expectVol: &qumuloVolume{
+				id:                   "v1:somserver:8000//a/b/c//d/e/f//vol1",
+				server:               "somserver",
+				restPort:             8000,
+				storeRealPath:        "a/b/c",
+				storeMountPath:       "d/e/f",
+				name:                 "vol1",
+			},
+		},
+	}
+
+	for _, test := range cases {
+		test := test //pin
+		t.Run(test.name, func(t *testing.T) {
+			assert.NotEqual(t, test.expectErr == nil, test.expectVol == nil)
+
+			// Setup
+
+			// Run
+			vol, err := newQumuloVolume(test.volName, test.params)
+
+			if test.expectErr != nil {
+				assert.Nil(t, vol)
+				assert.Equal(t, err, test.expectErr)
+			} else {
+				assert.Nil(t, err)
+				assert.Equal(t, vol, test.expectVol)
+			}
+		})
+	}
+}
+
+// case ins
