@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -208,6 +209,13 @@ func TestRestVersion(t *testing.T) {
 	_, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
-	_, err := testConnection.GetVersionInfo()
+	info, err := testConnection.GetVersionInfo()
 	assert.NoError(t, err)
+
+	version, err := info.GetSemanticVersion()
+	assert.NoError(t, err)
+
+	if version.LT(semver.Version{Major: 4, Minor: 3, Patch: 0}) {
+		t.Fatalf("Too small test version %v", version)
+	}
 }

@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -33,7 +34,7 @@ import (
 )
 
 // XXX scott:
-// o version gate for tree delete
+// o use better version of semver than blang
 // o add copyright to all files
 // o cache connections? 1 user at a time - could use auth file too
 // o error type/code for fmt.Errorf uses
@@ -57,6 +58,24 @@ func createConnection(server string, restPort int, secrets map[string]string) (*
 	}
 
 	c := MakeConnection(server, restPort, username, password, new(http.Client))
+
+	versionInfo, err := c.GetVersionInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	version, err := versionInfo.GetSemanticVersion()
+	if err != nil {
+		return nil, err
+	}
+
+	minimumVersion := semver.Version{Major: 4, Minor: 2, Patch: 4}
+
+	if version.LT(minimumVersion) {
+		return nil, status.Errorf(
+			codes.FailedPrecondition, "Cluster version %v must be >= %v", version, minimumVersion,
+		)
+	}
 
 	return &c, nil
 }

@@ -106,9 +106,9 @@ func TestRestAutoLoginFail(t *testing.T) {
 }
 
 func TestRestSemanticVersionBadRevsion1(t *testing.T) {
-	info := QumuloVersionInfo{Revision: "blah", Build: "x", Flavor: "y", BuildDate: "z"}
+	info := QumuloVersionInfo{Revision: "blah"}
 	_, err := info.GetSemanticVersion()
-	assert.EqualError(t, err, "Could not decode version &{\"blah\" \"x\" \"y\" \"z\"}")
+	assert.EqualError(t, err, "Could not decode version &{\"blah\"}")
 }
 
 func TestRestSemanticVersionBadRevsion2(t *testing.T) {

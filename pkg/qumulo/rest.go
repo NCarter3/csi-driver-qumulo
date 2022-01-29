@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/blang/semver" // XXX scott: this is old, use newer module
+	"github.com/blang/semver"
 )
 
 type LoginRequest struct {
@@ -495,9 +495,6 @@ func (self *Connection) TreeDeleteCreate(path string) (err error) {
 
 type QumuloVersionInfo struct {
 	Revision          string `json:"revision_id"`
-	Build             string `json:"build_id"`
-	Flavor            string `json:"flavor"`
-	BuildDate         string `json:"build_date"`
 }
 
 func (v *QumuloVersionInfo) GetSemanticVersion() (version semver.Version, err error) {
