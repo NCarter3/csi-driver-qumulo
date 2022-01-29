@@ -102,6 +102,10 @@ qumulo:
 qumulo-armv7:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/arm/v7/qumuloplugin ./cmd/qumuloplugin
 
+.PHONY: qqurl
+qqurl:
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -a -ldflags "${LDFLAGS} ${EXT_LDFLAGS}" -mod vendor -o bin/${ARCH}/qqurl ./cmd/qqurl
+
 .PHONY: container-build
 container-build:
 	docker buildx build --pull --output=type=$(OUTPUT_TYPE) --platform="linux/$(ARCH)" \
