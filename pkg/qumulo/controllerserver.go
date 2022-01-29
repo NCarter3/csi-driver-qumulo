@@ -24,9 +24,9 @@ import (
 	"strconv"
 	"strings"
 
+	"context"
 	"github.com/blang/semver"
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -103,7 +103,7 @@ type qumuloVolume struct {
 	name string
 }
 
-func getQuotaLimit (capacityRange *csi.CapacityRange) (uint64, error) {
+func getQuotaLimit(capacityRange *csi.CapacityRange) (uint64, error) {
 	if capacityRange == nil {
 		return 0, status.Error(codes.InvalidArgument, "CapacityRange must be provided")
 	}
@@ -152,10 +152,10 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	/*
-	var volCap *csi.VolumeCapability
-	if len(req.GetVolumeCapabilities()) > 0 {
-		volCap = req.GetVolumeCapabilities()[0]
-	}
+		var volCap *csi.VolumeCapability
+		if len(req.GetVolumeCapabilities()) > 0 {
+			volCap = req.GetVolumeCapabilities()[0]
+		}
 	*/
 
 	connection, err := createConnection(qVol.server, qVol.restPort, req.GetSecrets())
@@ -163,7 +163,7 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, err
 	}
 
-	attributes, err := connection.EnsureDir("/" + qVol.storeRealPath, qVol.name)
+	attributes, err := connection.EnsureDir("/"+qVol.storeRealPath, qVol.name)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create volume dir: %v", err.Error())
 	}
@@ -303,7 +303,7 @@ func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi
 	}
 
 	return &csi.ControllerExpandVolumeResponse{
-		CapacityBytes: int64(quotaLimit),
+		CapacityBytes:         int64(quotaLimit),
 		NodeExpansionRequired: false,
 	}, nil
 }
@@ -419,15 +419,15 @@ func newQumuloVolume(name string, params map[string]string) (*qumuloVolume, erro
 	storeMountPath = re.ReplaceAllLiteralString(storeMountPath, "/")
 
 	id := "v1:" + server + ":" + strconv.Itoa(restPort) +
-		  "//" + storeRealPath + "//" + storeMountPath + "//" + name
+		"//" + storeRealPath + "//" + storeMountPath + "//" + name
 
 	vol := &qumuloVolume{
-		id:                   id,
-		server:               server,
-		restPort:             restPort,
-		storeRealPath:        storeRealPath,
-		storeMountPath:       storeMountPath,
-		name:                 name,
+		id:             id,
+		server:         server,
+		restPort:       restPort,
+		storeRealPath:  storeRealPath,
+		storeMountPath: storeMountPath,
+		name:           name,
 	}
 
 	return vol, nil
@@ -466,11 +466,11 @@ func (cs *ControllerServer) getQumuloVolumeFromID(id string) (*qumuloVolume, err
 	}
 
 	return &qumuloVolume{
-		id:              id,
-		server:          tokens[1],
-		restPort:        restPort,
-		storeRealPath:   tokens[3],
-		storeMountPath:  tokens[4],
-		name:            tokens[5],
+		id:             id,
+		server:         tokens[1],
+		restPort:       restPort,
+		storeRealPath:  tokens[3],
+		storeMountPath: tokens[4],
+		name:           tokens[5],
 	}, nil
 }

@@ -24,17 +24,17 @@ import (
 
 	"fmt"
 
+	"context"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	mount "k8s.io/mount-utils"
 )
 
 const (
-	testCSIVolume      = "test-csi"
-	testVolumeID       = "test-server/test-base-dir/test-csi"
+	testCSIVolume = "test-csi"
+	testVolumeID  = "test-server/test-base-dir/test-csi"
 )
 
 func initTestController(t *testing.T) *ControllerServer {
@@ -96,7 +96,7 @@ func TestCreateVolume(t *testing.T) {
 		expectErr string
 	}{
 		{
-			name: "happy path",
+			name:    "happy path",
 			makeReq: func() *csi.CreateVolumeRequest { return &happyRequest },
 			expectRet: &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
@@ -175,7 +175,7 @@ func TestCreateVolume(t *testing.T) {
 
 			quotaLimit, err := testConnection.GetQuota(attributes.Id)
 			assert.NoError(t, err)
-			assert.Equal(t, quotaLimit, uint64(1024 * 1024 * 1024))
+			assert.Equal(t, quotaLimit, uint64(1024*1024*1024))
 		})
 	}
 }
@@ -227,9 +227,9 @@ func TestExpandVolumeMissingSecrets(t *testing.T) {
 	volumeId := makeVolumeId(testDirPath, "foobar")
 
 	req := &csi.ControllerExpandVolumeRequest{
-		VolumeId: volumeId,
+		VolumeId:      volumeId,
 		CapacityRange: &csi.CapacityRange{RequiredBytes: 1024 * 1024 * 1024},
-		Secrets: map[string]string{},
+		Secrets:       map[string]string{},
 	}
 
 	_, err := cs.ControllerExpandVolume(context.TODO(), req)
@@ -245,9 +245,9 @@ func TestExpandVolumeAuthFailure(t *testing.T) {
 	volumeId := makeVolumeId(testDirPath, "foobar")
 
 	req := &csi.ControllerExpandVolumeRequest{
-		VolumeId: volumeId,
+		VolumeId:      volumeId,
 		CapacityRange: &csi.CapacityRange{RequiredBytes: 1024 * 1024 * 1024},
-		Secrets: map[string]string{
+		Secrets:       map[string]string{
 			"username": testUsername,
 			"password": testPassword + "asdf",
 		},
@@ -267,16 +267,16 @@ func TestExpandVolumeVolumeDirectoryNotFound(t *testing.T) {
 	volumeId := makeVolumeId(testDirPath, "foobar")
 
 	req := &csi.ControllerExpandVolumeRequest{
-		VolumeId: volumeId,
+		VolumeId:      volumeId,
 		CapacityRange: &csi.CapacityRange{RequiredBytes: 1024 * 1024 * 1024},
-		Secrets: map[string]string{
+		Secrets:       map[string]string{
 			"username": testUsername,
 			"password": testPassword,
 		},
 	}
 
 	_, err := cs.ControllerExpandVolume(context.TODO(), req)
-	assert.Equal(t, err, status.Errorf(codes.NotFound,"Directory for volume %q is missing", volumeId))
+	assert.Equal(t, err, status.Errorf(codes.NotFound, "Directory for volume %q is missing", volumeId))
 }
 
 func TestExpandVolumeVolumeHappyPath(t *testing.T) {
@@ -288,7 +288,7 @@ func TestExpandVolumeVolumeHappyPath(t *testing.T) {
 	volumeId := makeVolumeId(testDirPath, "foobar")
 
 	req := &csi.ControllerExpandVolumeRequest{
-		VolumeId: volumeId,
+		VolumeId:      volumeId,
 		CapacityRange: &csi.CapacityRange{RequiredBytes: 2 * 1024 * 1024 * 1024},
 		Secrets: map[string]string{
 			"username": testUsername,
@@ -299,18 +299,18 @@ func TestExpandVolumeVolumeHappyPath(t *testing.T) {
 	// Create dir and quota before operation.
 	attributes, err := testConnection.EnsureDir(testDirPath, "foobar")
 	assert.NoError(t, err)
-	err = testConnection.EnsureQuota(attributes.Id, 1024 * 1024 * 1024)
+	err = testConnection.EnsureQuota(attributes.Id, 1024*1024*1024)
 
 	resp, err := cs.ControllerExpandVolume(context.TODO(), req)
 	assert.NoError(t, err)
 	assert.Equal(t, resp, &csi.ControllerExpandVolumeResponse{
-		CapacityBytes: 2 * 1024 * 1024 * 1024,
+		CapacityBytes:         2 * 1024 * 1024 * 1024,
 		NodeExpansionRequired: false,
 	})
 
 	newLimit, err := testConnection.GetQuota(attributes.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, newLimit, uint64(2 * 1024 * 1024 * 1024))
+	assert.Equal(t, newLimit, uint64(2*1024*1024*1024))
 }
 
 /*  ____       _      _     __     __    _
@@ -353,7 +353,7 @@ func TestDeleteVolumeMissingSecrets(t *testing.T) {
 
 	req := &csi.DeleteVolumeRequest{
 		VolumeId: volumeId,
-		Secrets: map[string]string{},
+		Secrets:  map[string]string{},
 	}
 
 	_, err := cs.DeleteVolume(context.TODO(), req)
@@ -370,7 +370,7 @@ func TestDeleteVolumeAuthFailure(t *testing.T) {
 
 	req := &csi.DeleteVolumeRequest{
 		VolumeId: volumeId,
-		Secrets: map[string]string{
+		Secrets:  map[string]string{
 			"username": testUsername,
 			"password": testPassword + "asdf",
 		},
@@ -391,7 +391,7 @@ func TestDeleteVolumeHappyPath(t *testing.T) {
 
 	req := &csi.DeleteVolumeRequest{
 		VolumeId: volumeId,
-		Secrets: map[string]string{
+		Secrets:  map[string]string{
 			"username": testUsername,
 			"password": testPassword,
 		},
@@ -425,7 +425,7 @@ func TestDeleteVolumeMissingDirectory(t *testing.T) {
 
 	req := &csi.DeleteVolumeRequest{
 		VolumeId: volumeId,
-		Secrets: map[string]string{
+		Secrets:  map[string]string{
 			"username": testUsername,
 			"password": testPassword,
 		},
@@ -609,8 +609,8 @@ func TestGetQumuloVolumeFromID(t *testing.T) {
 			expectErr: "Could not decode volume ID \"v1:server1:4foo//////volume\"",
 		},
 		{
-			name:      "Happy store path root, mount path root",
-			req:       "v1:server1:444//////volume",
+			name: "Happy store path root, mount path root",
+			req:  "v1:server1:444//////volume",
 			expectRet: &qumuloVolume{
 				id:             "v1:server1:444//////volume",
 				server:         "server1",
@@ -622,8 +622,8 @@ func TestGetQumuloVolumeFromID(t *testing.T) {
 			expectErr: "",
 		},
 		{
-			name:      "Happy store path non-root, mount path root",
-			req:       "v1:server1:444//foo/bar/baz////volume",
+			name: "Happy store path non-root, mount path root",
+			req:  "v1:server1:444//foo/bar/baz////volume",
 			expectRet: &qumuloVolume{
 				id:             "v1:server1:444//foo/bar/baz////volume",
 				server:         "server1",
@@ -635,8 +635,8 @@ func TestGetQumuloVolumeFromID(t *testing.T) {
 			expectErr: "",
 		},
 		{
-			name:      "Happy store path non-root, mount path non-root",
-			req:       "v1:server1:444//foo/bar/baz//some/export//frog",
+			name: "Happy store path non-root, mount path non-root",
+			req:  "v1:server1:444//foo/bar/baz//some/export//frog",
 			expectRet: &qumuloVolume{
 				id:             "v1:server1:444//foo/bar/baz//some/export//frog",
 				server:         "server1",
@@ -679,37 +679,37 @@ func TestGetQuotaLimit(t *testing.T) {
 		expectRet uint64
 	}{
 		{
-			name:	   "nil input",
+			name:      "nil input",
 			input:     nil,
 			expectErr: "rpc error: code = InvalidArgument desc = CapacityRange must be provided",
 			expectRet: 0,
 		},
 		{
-			name:	   "both zero",
+			name:      "both zero",
 			input:     &csi.CapacityRange{RequiredBytes: 0, LimitBytes: 0},
 			expectErr: "rpc error: code = InvalidArgument desc = RequiredBytes or LimitBytes must be provided",
 			expectRet: 0,
 		},
 		{
-			name:	   "required negative, limit zero",
+			name:      "required negative, limit zero",
 			input:     &csi.CapacityRange{RequiredBytes: -1, LimitBytes: 0},
 			expectErr: "rpc error: code = InvalidArgument desc = RequiredBytes must be positive",
 			expectRet: 0,
 		},
 		{
-			name:	   "required zero, limit negative",
+			name:      "required zero, limit negative",
 			input:     &csi.CapacityRange{RequiredBytes: 0, LimitBytes: -1},
 			expectErr: "rpc error: code = InvalidArgument desc = LimitBytes must be positive",
 			expectRet: 0,
 		},
 		{
-			name:	   "required used first",
+			name:      "required used first",
 			input:     &csi.CapacityRange{RequiredBytes: 100, LimitBytes: 50},
 			expectErr: "",
 			expectRet: 100,
 		},
 		{
-			name:	   "limit used if required is zero",
+			name:      "limit used if required is zero",
 			input:     &csi.CapacityRange{RequiredBytes: 0, LimitBytes: 50},
 			expectErr: "",
 			expectRet: 50,
@@ -747,53 +747,53 @@ func TestGetQuotaLimit(t *testing.T) {
 
 func TestNewQumuloVolume(t *testing.T) {
 	cases := []struct {
-		name       string
-		volName    string
-		params     map[string]string
-		expectErr  error
+		name      string
+		volName   string
+		params    map[string]string
+		expectErr error
 		expectVol *qumuloVolume
 	}{
 		{
-			name:     "non-numeric port",
-			volName:  "vol1",
-			params:   map[string]string{
+			name:    "non-numeric port",
+			volName: "vol1",
+			params: map[string]string{
 				"restport": "x y",
 			},
 			expectErr: status.Error(codes.InvalidArgument, "invalid port \"x y\""),
 			expectVol: nil,
 		},
 		{
-			name:     "unknown parameter",
-			volName:  "vol1",
-			params:   map[string]string{
+			name:    "unknown parameter",
+			volName: "vol1",
+			params: map[string]string{
 				"blah": "blah",
 			},
 			expectErr: status.Error(codes.InvalidArgument, "invalid parameter \"blah\""),
 			expectVol: nil,
 		},
 		{
-			name:     "server is required parameter",
-			volName:  "vol1",
-			params:   map[string]string{
+			name:    "server is required parameter",
+			volName: "vol1",
+			params: map[string]string{
 				"StoreRealPath": "/foo",
 			},
 			expectErr: status.Error(codes.InvalidArgument, "server is a required parameter"),
 			expectVol: nil,
 		},
 		{
-			name:     "storerealpath is required parameter",
-			volName:  "vol1",
-			params:   map[string]string{
+			name:    "storerealpath is required parameter",
+			volName: "vol1",
+			params: map[string]string{
 				"server": "foo",
 			},
 			expectErr: status.Error(codes.InvalidArgument, "storerealpath is a required parameter"),
 			expectVol: nil,
 		},
 		{
-			name:     "storerealpath must start with slash",
-			volName:  "vol1",
-			params:   map[string]string{
-				"server": "foo",
+			name:    "storerealpath must start with slash",
+			volName: "vol1",
+			params: map[string]string{
+				"server":        "foo",
 				"StoreRealPath": "foo",
 			},
 			expectErr: status.Error(
@@ -803,11 +803,11 @@ func TestNewQumuloVolume(t *testing.T) {
 			expectVol: nil,
 		},
 		{
-			name:     "storemountpath must start with slash",
-			volName:  "vol1",
-			params:   map[string]string{
-				"server": "foo",
-				"StoreRealPath": "/foo",
+			name:    "storemountpath must start with slash",
+			volName: "vol1",
+			params: map[string]string{
+				"server":         "foo",
+				"StoreRealPath":  "/foo",
 				"storemountpath": "blah",
 			},
 			expectErr: status.Error(
@@ -817,127 +817,127 @@ func TestNewQumuloVolume(t *testing.T) {
 			expectVol: nil,
 		},
 		{
-			name:     "default path and mount",
-			volName:  "vol1",
-			params:   map[string]string{
-				"server": "somserver",
+			name:    "default path and mount",
+			volName: "vol1",
+			params: map[string]string{
+				"server":        "somserver",
 				"StoreRealPath": "/foo/bar",
 			},
 			expectErr: nil,
 			expectVol: &qumuloVolume{
-				id:                   "v1:somserver:8000//foo/bar//foo/bar//vol1",
-				server:               "somserver",
-				restPort:             8000,
-				storeRealPath:        "foo/bar",
-				storeMountPath:       "foo/bar",
-				name:                 "vol1",
+				id:             "v1:somserver:8000//foo/bar//foo/bar//vol1",
+				server:         "somserver",
+				restPort:       8000,
+				storeRealPath:  "foo/bar",
+				storeMountPath: "foo/bar",
+				name:           "vol1",
 			},
 		},
 		{
-			name:     "custom port",
-			volName:  "vol1",
-			params:   map[string]string{
-				"server": "somserver",
+			name:    "custom port",
+			volName: "vol1",
+			params: map[string]string{
+				"server":        "somserver",
 				"StoreRealPath": "/foo/bar",
-				"restport": "1234",
+				"restport":      "1234",
 			},
 			expectErr: nil,
 			expectVol: &qumuloVolume{
-				id:                   "v1:somserver:1234//foo/bar//foo/bar//vol1",
-				server:               "somserver",
-				restPort:             1234,
-				storeRealPath:        "foo/bar",
-				storeMountPath:       "foo/bar",
-				name:                 "vol1",
+				id:             "v1:somserver:1234//foo/bar//foo/bar//vol1",
+				server:         "somserver",
+				restPort:       1234,
+				storeRealPath:  "foo/bar",
+				storeMountPath: "foo/bar",
+				name:           "vol1",
 			},
 		},
 		{
-			name:     "root path and default mount",
-			volName:  "vol1",
-			params:   map[string]string{
-				"server": "somserver",
+			name:    "root path and default mount",
+			volName: "vol1",
+			params: map[string]string{
+				"server":        "somserver",
 				"StoreRealPath": "/",
 			},
 			expectErr: nil,
 			expectVol: &qumuloVolume{
-				id:                   "v1:somserver:8000//////vol1",
-				server:               "somserver",
-				restPort:             8000,
-				storeRealPath:        "",
-				storeMountPath:       "",
-				name:                 "vol1",
+				id:             "v1:somserver:8000//////vol1",
+				server:         "somserver",
+				restPort:       8000,
+				storeRealPath:  "",
+				storeMountPath: "",
+				name:           "vol1",
 			},
 		},
 		{
-			name:     "root path and mount",
-			volName:  "vol1",
-			params:   map[string]string{
-				"server": "somserver",
-				"StoreRealPath": "/",
+			name:    "root path and mount",
+			volName: "vol1",
+			params: map[string]string{
+				"server":         "somserver",
+				"StoreRealPath":  "/",
 				"storeMountPath": "/",
 			},
 			expectErr: nil,
 			expectVol: &qumuloVolume{
-				id:                   "v1:somserver:8000//////vol1",
-				server:               "somserver",
-				restPort:             8000,
-				storeRealPath:        "",
-				storeMountPath:       "",
-				name:                 "vol1",
+				id:             "v1:somserver:8000//////vol1",
+				server:         "somserver",
+				restPort:       8000,
+				storeRealPath:  "",
+				storeMountPath: "",
+				name:           "vol1",
 			},
 		},
 		{
-			name:     "path and mount",
-			volName:  "vol1",
-			params:   map[string]string{
-				"server": "somserver",
-				"StoreRealPath": "/x/y",
+			name:    "path and mount",
+			volName: "vol1",
+			params: map[string]string{
+				"server":         "somserver",
+				"StoreRealPath":  "/x/y",
 				"storeMountPath": "/y/z",
 			},
 			expectErr: nil,
 			expectVol: &qumuloVolume{
-				id:                   "v1:somserver:8000//x/y//y/z//vol1",
-				server:               "somserver",
-				restPort:             8000,
-				storeRealPath:        "x/y",
-				storeMountPath:       "y/z",
-				name:                 "vol1",
+				id:             "v1:somserver:8000//x/y//y/z//vol1",
+				server:         "somserver",
+				restPort:       8000,
+				storeRealPath:  "x/y",
+				storeMountPath: "y/z",
+				name:           "vol1",
 			},
 		},
 		{
-			name:     "extra leading and trailing slashes",
-			volName:  "vol1",
-			params:   map[string]string{
-				"server": "somserver",
-				"StoreRealPath": "///x/y/",
+			name:    "extra leading and trailing slashes",
+			volName: "vol1",
+			params: map[string]string{
+				"server":         "somserver",
+				"StoreRealPath":  "///x/y/",
 				"storeMountPath": "//y/z///",
 			},
 			expectErr: nil,
 			expectVol: &qumuloVolume{
-				id:                   "v1:somserver:8000//x/y//y/z//vol1",
-				server:               "somserver",
-				restPort:             8000,
-				storeRealPath:        "x/y",
-				storeMountPath:       "y/z",
-				name:                 "vol1",
+				id:             "v1:somserver:8000//x/y//y/z//vol1",
+				server:         "somserver",
+				restPort:       8000,
+				storeRealPath:  "x/y",
+				storeMountPath: "y/z",
+				name:           "vol1",
 			},
 		},
 		{
-			name:     "extra interior slashes",
-			volName:  "vol1",
-			params:   map[string]string{
-				"server": "somserver",
-				"StoreRealPath": "/a//b///c",
+			name:    "extra interior slashes",
+			volName: "vol1",
+			params: map[string]string{
+				"server":         "somserver",
+				"StoreRealPath":  "/a//b///c",
 				"storeMountPath": "/d//e///f",
 			},
 			expectErr: nil,
 			expectVol: &qumuloVolume{
-				id:                   "v1:somserver:8000//a/b/c//d/e/f//vol1",
-				server:               "somserver",
-				restPort:             8000,
-				storeRealPath:        "a/b/c",
-				storeMountPath:       "d/e/f",
-				name:                 "vol1",
+				id:             "v1:somserver:8000//a/b/c//d/e/f//vol1",
+				server:         "somserver",
+				restPort:       8000,
+				storeRealPath:  "a/b/c",
+				storeMountPath: "d/e/f",
+				name:           "vol1",
 			},
 		},
 	}
@@ -965,12 +965,12 @@ func TestNewQumuloVolume(t *testing.T) {
 
 func TestGetVolumeRealPathEmpty(t *testing.T) {
 	vol := qumuloVolume{
-		id:                   "v1:somserver:8000////d/e/f//vol1",
-		server:               "somserver",
-		restPort:             8000,
-		storeRealPath:        "",
-		storeMountPath:       "d/e/f",
-		name:                 "vol1",
+		id:             "v1:somserver:8000////d/e/f//vol1",
+		server:         "somserver",
+		restPort:       8000,
+		storeRealPath:  "",
+		storeMountPath: "d/e/f",
+		name:           "vol1",
 	}
 
 	assert.Equal(t, vol.getVolumeRealPath(), "/vol1")
@@ -978,12 +978,12 @@ func TestGetVolumeRealPathEmpty(t *testing.T) {
 
 func TestGetVolumeRealPathNonEmpty(t *testing.T) {
 	vol := qumuloVolume{
-		id:                   "v1:somserver:8000////d/e/f//vol1",
-		server:               "somserver",
-		restPort:             8000,
-		storeRealPath:        "hello/world",
-		storeMountPath:       "d/e/f",
-		name:                 "vol1",
+		id:             "v1:somserver:8000////d/e/f//vol1",
+		server:         "somserver",
+		restPort:       8000,
+		storeRealPath:  "hello/world",
+		storeMountPath: "d/e/f",
+		name:           "vol1",
 	}
 
 	assert.Equal(t, vol.getVolumeRealPath(), "/hello/world/vol1")
@@ -991,12 +991,12 @@ func TestGetVolumeRealPathNonEmpty(t *testing.T) {
 
 func TestGetVolumeSharePathEmpty(t *testing.T) {
 	vol := qumuloVolume{
-		id:                   "v1:somserver:8000////d/e/f//vol1",
-		server:               "somserver",
-		restPort:             8000,
-		storeRealPath:        "d/e/f",
-		storeMountPath:       "",
-		name:                 "vol1",
+		id:             "v1:somserver:8000////d/e/f//vol1",
+		server:         "somserver",
+		restPort:       8000,
+		storeRealPath:  "d/e/f",
+		storeMountPath: "",
+		name:           "vol1",
 	}
 
 	assert.Equal(t, vol.getVolumeSharePath(), "/vol1")
@@ -1004,12 +1004,12 @@ func TestGetVolumeSharePathEmpty(t *testing.T) {
 
 func TestGetVolumeShareNonPathEmpty(t *testing.T) {
 	vol := qumuloVolume{
-		id:                   "v1:somserver:8000////d/e/f//vol1",
-		server:               "somserver",
-		restPort:             8000,
-		storeRealPath:        "d/e/f",
-		storeMountPath:       "x/y/z",
-		name:                 "vol1",
+		id:             "v1:somserver:8000////d/e/f//vol1",
+		server:         "somserver",
+		restPort:       8000,
+		storeRealPath:  "d/e/f",
+		storeMountPath: "x/y/z",
+		name:           "vol1",
 	}
 
 	assert.Equal(t, vol.getVolumeSharePath(), "/x/y/z/vol1")
@@ -1017,12 +1017,12 @@ func TestGetVolumeShareNonPathEmpty(t *testing.T) {
 
 func TestQumuloVolumeToCSIVolume(t *testing.T) {
 	vol := qumuloVolume{
-		id:                   "v1:somserver:8000////d/e/f//vol1",
-		server:               "somserver",
-		restPort:             8000,
-		storeRealPath:        "d/e/f",
-		storeMountPath:       "x/y/z",
-		name:                 "vol1",
+		id:             "v1:somserver:8000////d/e/f//vol1",
+		server:         "somserver",
+		restPort:       8000,
+		storeRealPath:  "d/e/f",
+		storeMountPath: "x/y/z",
+		name:           "vol1",
 	}
 
 	assert.Equal(
@@ -1038,4 +1038,3 @@ func TestQumuloVolumeToCSIVolume(t *testing.T) {
 		},
 	)
 }
-
