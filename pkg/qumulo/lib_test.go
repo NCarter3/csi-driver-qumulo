@@ -99,8 +99,16 @@ func TestMain(m *testing.M) {
 	}
 
 	if !logging {
-		// XXX scott: this isn't working ...
+		vlogFlags := &flag.FlagSet{}
+		klog.InitFlags(vlogFlags)
 		klog.SetOutput(ioutil.Discard)
+		vlogFlags.Set("logtostderr", "false")
+		vlogFlags.Set("alsologtostderr", "false")
+	} else {
+		vlogFlags := &flag.FlagSet{}
+		klog.InitFlags(vlogFlags)
+		vlogFlags.Set("stderrthreshold", "INFO")
+		vlogFlags.Set("v", "3")
 	}
 
 	code := m.Run()

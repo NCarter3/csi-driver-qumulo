@@ -60,8 +60,6 @@ func TestCreateVolume(t *testing.T) {
 
 	volumeId := makeVolumeId(testDirPath, "foobar")
 
-	t.Logf("TEST PORT is %d", testPort)
-
 	happyRequest := csi.CreateVolumeRequest{
 		Name: "foobar",
 		VolumeCapabilities: []*csi.VolumeCapability{
