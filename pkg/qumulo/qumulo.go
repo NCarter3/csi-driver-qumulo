@@ -17,8 +17,6 @@ limitations under the License.
 package qumulo
 
 import (
-	"fmt"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"k8s.io/klog/v2"
 	mount "k8s.io/mount-utils"
@@ -152,10 +150,4 @@ func (n *Driver) AddNodeServiceCapabilities(nl []csi.NodeServiceCapability_RPC_T
 		nsc = append(nsc, NewNodeServiceCapability(n))
 	}
 	n.nscap = nsc
-}
-
-func IsCorruptedDir(dir string) bool {
-	_, pathErr := mount.PathExists(dir)
-	fmt.Printf("IsCorruptedDir(%s) returned with error: %v", dir, pathErr)
-	return pathErr != nil && mount.IsCorruptedMnt(pathErr)
 }
