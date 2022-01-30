@@ -208,7 +208,7 @@ func TestExpandVolumeVolumeInvalidId(t *testing.T) {
 func TestExpandVolumeVolumeNoLimit(t *testing.T) {
 	cs := initTestController(t)
 
-	volumeId := makeVolumeId("/some/path", "foobar")
+	volumeId := "v1:server:123//////foobar"
 
 	req := &csi.ControllerExpandVolumeRequest{VolumeId: volumeId}
 
