@@ -13,6 +13,8 @@ import (
 	"strconv"
 
 	"github.com/blang/semver"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"k8s.io/klog/v2"
 )
 
@@ -84,11 +86,11 @@ type ErrorResponse struct {
 	Stack       []string `json:"stack"`
 }
 
-func MakeRestError(status int, response []byte) RestError {
+func MakeRestError(statusCode int, response []byte) RestError {
 	var obj ErrorResponse
 	json.Unmarshal(response, &obj)
 	return RestError{
-		StatusCode:  status,
+		StatusCode:  statusCode,
 		Description: obj.Description,
 		Module:      obj.Module,
 		ErrorClass:  obj.ErrorClass,
@@ -119,7 +121,7 @@ func (self *Connection) Login() error {
 	}
 
 	if response.StatusCode != 200 {
-		return fmt.Errorf("Login failed: %v", response.Status)
+		return status.Errorf(codes.Unauthenticated, "Login failed: %d", response.StatusCode)
 	}
 
 	var res map[string]string
@@ -146,7 +148,7 @@ func (self *Connection) do(verb string, uri string, body []byte) ([]byte, error)
 		return nil, err
 	}
 
-	status := response.StatusCode
+	statusCode := response.StatusCode
 
 	responseData, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
@@ -154,8 +156,8 @@ func (self *Connection) do(verb string, uri string, body []byte) ([]byte, error)
 		return nil, err
 	}
 
-	if status < 200 || status >= 300 {
-		return nil, MakeRestError(status, responseData)
+	if statusCode < 200 || statusCode >= 300 {
+		return nil, MakeRestError(statusCode, responseData)
 	}
 
 	return responseData, err

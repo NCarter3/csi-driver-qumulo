@@ -252,8 +252,8 @@ func TestExpandVolumeAuthFailure(t *testing.T) {
 	}
 
 	_, err := cs.ControllerExpandVolume(context.TODO(), req)
-	// XXX scott: rework rest layer to return codes.Unauthenticated
-	assert.Contains(t, err.Error(), "Login failed")
+	// XXX scott: add these tests for other endpoints that talk to the cluster
+	assert.Equal(t, err, status.Error(codes.Unauthenticated, "Login failed: 401"))
 }
 
 func TestExpandVolumeVolumeDirectoryNotFound(t *testing.T) {

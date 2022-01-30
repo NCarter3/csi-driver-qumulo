@@ -306,6 +306,19 @@ func (cs *ControllerServer) ListSnapshots(
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
+func transFormRestError(err error, handledStatus int, handledErr error) error {
+	switch err.(type) {
+	case RestError:
+		z := err.(RestError)
+		if z.StatusCode == handledStatus {
+			return handledErr
+		}
+		return status.Errorf(codes.Internal, "Unhandled Error: %v", err.Error())
+	}
+
+	return err
+}
+
 func (cs *ControllerServer) ControllerExpandVolume(
 	ctx context.Context,
 	req *csi.ControllerExpandVolumeRequest,
@@ -333,22 +346,22 @@ func (cs *ControllerServer) ControllerExpandVolume(
 
 	attributes, err := connection.LookUp(qVol.getVolumeRealPath())
 	if err != nil {
-		if errorIsRestErrorWithStatus(err, 404) {
-			err = status.Errorf(codes.NotFound, "Directory for volume %q is missing", qVol.id)
-		} else {
-			err = status.Errorf(codes.Internal, "Unhandled Error %v: %v", qVol.id, err.Error())
-		}
+		err = transFormRestError(
+			err,
+			404,
+			status.Errorf(codes.NotFound, "Directory for volume %q is missing", qVol.id),
+		)
 
 		return nil, err
 	}
 
 	err = connection.EnsureQuota(attributes.Id, quotaLimit)
 	if err != nil {
-		if errorIsRestErrorWithStatus(err, 404) {
-			err = status.Errorf(codes.NotFound, "Directory for volume %q is missing", qVol.id)
-		} else {
-			err = status.Errorf(codes.Internal, "Unhandled Error %v: %v", qVol.id, err.Error())
-		}
+		err = transFormRestError(
+			err,
+			404,
+			status.Errorf(codes.NotFound, "Directory for volume %q is missing", qVol.id),
+		)
 	}
 
 	return &csi.ControllerExpandVolumeResponse{
