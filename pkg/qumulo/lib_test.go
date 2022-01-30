@@ -4,13 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/klog/v2"
 )
 
 func assertRestError(t *testing.T, err error, expectedStatus int, expectedErrorClass string) {
@@ -43,7 +43,6 @@ var (
 )
 
 func TestMain(m *testing.M) {
-
 	// Get cluster connection settings from the environment first then allow override
 	// with flags. An empty host indicates no cluster which bypassess tests using requireCluster.
 
@@ -70,17 +69,17 @@ func TestMain(m *testing.M) {
 		var err error
 		testPort, err = strconv.Atoi(portStr)
 		if err != nil {
-			log.Fatal(err)
+			klog.Fatal(err)
 		}
 
 		if testPort == 0 {
-			log.Fatal("QUMULO_TEST_PORT is required with QUMULO_TEST_HOST")
+			klog.Fatal("QUMULO_TEST_PORT is required with QUMULO_TEST_HOST")
 		}
 		if len(testUsername) == 0 {
-			log.Fatal("QUMULO_TEST_USERNAME is required with QUMULO_TEST_HOST")
+			klog.Fatal("QUMULO_TEST_USERNAME is required with QUMULO_TEST_HOST")
 		}
 		if len(testPassword) == 0 {
-			log.Fatal("QUMULO_TEST_PASSWORD is required with QUMULO_TEST_HOST")
+			klog.Fatal("QUMULO_TEST_PASSWORD is required with QUMULO_TEST_HOST")
 		}
 
 		c := MakeConnection(testHost, testPort, testUsername, testPassword, new(http.Client))
@@ -91,7 +90,7 @@ func TestMain(m *testing.M) {
 
 		_, err = c.CreateDir(testroot, "gotest")
 		if err != nil {
-			log.Fatal(err)
+			klog.Fatal(err)
 		}
 
 		testFixtureDir = fmt.Sprintf("%s/gotest", testroot)
@@ -100,7 +99,8 @@ func TestMain(m *testing.M) {
 	}
 
 	if !logging {
-		log.SetOutput(ioutil.Discard)
+		// XXX scott: this isn't working ...
+		klog.SetOutput(ioutil.Discard)
 	}
 
 	code := m.Run()
@@ -108,7 +108,11 @@ func TestMain(m *testing.M) {
 	if testConnection != nil && !nocleanup {
 		err := testConnection.TreeDeleteCreate(testFixtureDir)
 		if err != nil {
-			log.Printf("Failed to clean up test dir %q with tree delete: %v", testFixtureDir, err)
+			klog.Warningf(
+				"Failed to clean up test dir %q with tree delete: %v",
+				testFixtureDir,
+				err,
+			)
 			code = 1
 		}
 	}

@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
 
 	"github.com/blang/semver"
+	"k8s.io/klog/v2"
 )
 
 type LoginRequest struct {
@@ -99,7 +99,7 @@ func MakeRestError(status int, response []byte) RestError {
 
 func panicOnError(err error) {
 	if err != nil {
-		log.Fatal(err)
+		klog.Fatal(err)
 	}
 }
 
@@ -164,7 +164,7 @@ func (self *Connection) do(verb string, uri string, body []byte) ([]byte, error)
 func (self *Connection) Do(verb string, uri string, body []byte) (result []byte, err error) {
 	result, err = self.do(verb, uri, body)
 
-	log.Printf("URI %s %s", verb, uri)
+	klog.V(2).Infof("Request to %s URI %s %s", self.Host, verb, uri)
 
 	if err == nil {
 		return
