@@ -82,6 +82,21 @@ func createConnection(server string, restPort int, secrets map[string]string) (*
 	return &c, nil
 }
 
+func transFormRestError(err error, transforms map[int]error) error {
+	switch err.(type) {
+	case RestError:
+		z := err.(RestError)
+		for handledStatus, handledErr := range transforms {
+			if z.StatusCode == handledStatus {
+				return handledErr
+			}
+		}
+		return status.Errorf(codes.Internal, "Unhandled Error: %v", err.Error())
+	}
+
+	return err
+}
+
 // An internal representation of a volume created by the provisioner.
 type qumuloVolume struct {
 	// Volume id
@@ -214,11 +229,7 @@ func (cs *ControllerServer) DeleteVolume(
 
 	err = connection.TreeDeleteCreate(path)
 	if err != nil {
-		return nil, status.Errorf(
-			codes.Internal,
-			"failed to tree delete subdirectory: %v",
-			err.Error(),
-		)
+		return nil, transFormRestError(err, map[int]error{})
 	}
 
 	return &csi.DeleteVolumeResponse{}, nil
@@ -306,19 +317,6 @@ func (cs *ControllerServer) ListSnapshots(
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-func transFormRestError(err error, handledStatus int, handledErr error) error {
-	switch err.(type) {
-	case RestError:
-		z := err.(RestError)
-		if z.StatusCode == handledStatus {
-			return handledErr
-		}
-		return status.Errorf(codes.Internal, "Unhandled Error: %v", err.Error())
-	}
-
-	return err
-}
-
 func (cs *ControllerServer) ControllerExpandVolume(
 	ctx context.Context,
 	req *csi.ControllerExpandVolumeRequest,
@@ -346,21 +344,21 @@ func (cs *ControllerServer) ControllerExpandVolume(
 
 	attributes, err := connection.LookUp(qVol.getVolumeRealPath())
 	if err != nil {
-		err = transFormRestError(
+		return nil, transFormRestError(
 			err,
-			404,
-			status.Errorf(codes.NotFound, "Directory for volume %q is missing", qVol.id),
+			map[int]error{
+				404: status.Errorf(codes.NotFound, "Directory for volume %q is missing", qVol.id),
+			},
 		)
-
-		return nil, err
 	}
 
 	err = connection.EnsureQuota(attributes.Id, quotaLimit)
 	if err != nil {
-		err = transFormRestError(
+		return nil, transFormRestError(
 			err,
-			404,
-			status.Errorf(codes.NotFound, "Directory for volume %q is missing", qVol.id),
+			map[int]error{
+				404: status.Errorf(codes.NotFound, "Directory for volume %q is missing", qVol.id),
+			},
 		)
 	}
 

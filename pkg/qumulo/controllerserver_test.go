@@ -375,8 +375,7 @@ func TestDeleteVolumeAuthFailure(t *testing.T) {
 	}
 
 	_, err := cs.DeleteVolume(context.TODO(), req)
-	// XXX scott: rework rest layer to return codes.Unauthenticated
-	assert.Contains(t, err.Error(), "Login failed")
+	assert.Equal(t, err, status.Error(codes.Unauthenticated, "Login failed: 401"))
 }
 
 func TestDeleteVolumeHappyPath(t *testing.T) {
