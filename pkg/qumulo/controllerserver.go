@@ -126,7 +126,10 @@ func getQuotaLimit(capacityRange *csi.CapacityRange) (uint64, error) {
 }
 
 // CreateVolume create a volume
-func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+func (cs *ControllerServer) CreateVolume(
+	ctx context.Context,
+	req *csi.CreateVolumeRequest,
+) (*csi.CreateVolumeResponse, error) {
 	name := req.GetName()
 
 	if len(name) == 0 {
@@ -170,7 +173,12 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	err = connection.EnsureQuota(attributes.Id, quotaLimit)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to set quota on %v: %v", qVol.id, err.Error())
+		return nil, status.Errorf(
+			codes.Internal,
+			"Failed to set quota on %v: %v",
+			qVol.id,
+			err.Error(),
+		)
 	}
 
 	// XXX scott: chmod 0777 new directory?
@@ -179,7 +187,11 @@ func (cs *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 }
 
 // DeleteVolume delete a volume
-func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+func (cs *ControllerServer) DeleteVolume(
+	ctx context.Context,
+	req *csi.DeleteVolumeRequest,
+) (*csi.DeleteVolumeResponse, error) {
+
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
@@ -202,25 +214,41 @@ func (cs *ControllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 	err = connection.TreeDeleteCreate(path)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to tree delete subdirectory: %v", err.Error())
+		return nil, status.Errorf(
+			codes.Internal,
+			"failed to tree delete subdirectory: %v",
+			err.Error(),
+		)
 	}
 
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
-func (cs *ControllerServer) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
+func (cs *ControllerServer) ControllerPublishVolume(
+	ctx context.Context,
+	req *csi.ControllerPublishVolumeRequest,
+) (*csi.ControllerPublishVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-func (cs *ControllerServer) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
+func (cs *ControllerServer) ControllerUnpublishVolume(
+	ctx context.Context,
+	req *csi.ControllerUnpublishVolumeRequest,
+) (*csi.ControllerUnpublishVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-func (cs *ControllerServer) ControllerGetVolume(ctx context.Context, req *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
+func (cs *ControllerServer) ControllerGetVolume(
+	ctx context.Context,
+	req *csi.ControllerGetVolumeRequest,
+) (*csi.ControllerGetVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+func (cs *ControllerServer) ValidateVolumeCapabilities(
+	ctx context.Context,
+	req *csi.ValidateVolumeCapabilitiesRequest,
+) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	if len(req.GetVolumeId()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
@@ -232,35 +260,56 @@ func (cs *ControllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 	return &csi.ValidateVolumeCapabilitiesResponse{Message: ""}, nil
 }
 
-func (cs *ControllerServer) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
+func (cs *ControllerServer) ListVolumes(
+	ctx context.Context,
+	req *csi.ListVolumesRequest,
+) (*csi.ListVolumesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-func (cs *ControllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
+func (cs *ControllerServer) GetCapacity(
+	ctx context.Context,
+	req *csi.GetCapacityRequest,
+) (*csi.GetCapacityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // ControllerGetCapabilities implements the default GRPC callout.
 // Default supports all capabilities
-func (cs *ControllerServer) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
+func (cs *ControllerServer) ControllerGetCapabilities(
+	ctx context.Context,
+	req *csi.ControllerGetCapabilitiesRequest,
+) (*csi.ControllerGetCapabilitiesResponse, error) {
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: cs.Driver.cscap,
 	}, nil
 }
 
-func (cs *ControllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
+func (cs *ControllerServer) CreateSnapshot(
+	ctx context.Context,
+	req *csi.CreateSnapshotRequest,
+) (*csi.CreateSnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-func (cs *ControllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
+func (cs *ControllerServer) DeleteSnapshot(
+	ctx context.Context,
+	req *csi.DeleteSnapshotRequest,
+) (*csi.DeleteSnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-func (cs *ControllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
+func (cs *ControllerServer) ListSnapshots(
+	ctx context.Context,
+	req *csi.ListSnapshotsRequest,
+) (*csi.ListSnapshotsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
-func (cs *ControllerServer) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+func (cs *ControllerServer) ControllerExpandVolume(
+	ctx context.Context,
+	req *csi.ControllerExpandVolumeRequest,
+) (*csi.ControllerExpandVolumeResponse, error) {
 
 	volumeID := req.GetVolumeId()
 	if volumeID == "" {
@@ -444,7 +493,7 @@ func (vol *qumuloVolume) getVolumeSharePath() string {
 
 func (vol *qumuloVolume) qumuloVolumeToCSIVolume() *csi.Volume {
 	return &csi.Volume{
-		CapacityBytes: 0, // by setting it to zero, Provisioner will use PVC requested size as PV size
+		CapacityBytes: 0, // by setting it to zero, Provisioner uses PVC requested size as PV size
 		VolumeId:      vol.id,
 		VolumeContext: map[string]string{
 			paramServer: vol.server,
