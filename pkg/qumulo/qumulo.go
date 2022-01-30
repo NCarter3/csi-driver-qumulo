@@ -36,6 +36,7 @@ type Driver struct {
 	cap         map[csi.VolumeCapability_AccessMode_Mode]bool
 	cscap       []*csi.ControllerServiceCapability
 	nscap       []*csi.NodeServiceCapability
+	// XXX scott: not needed?
 	volumeLocks *VolumeLocks
 }
 
