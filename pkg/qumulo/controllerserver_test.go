@@ -54,13 +54,16 @@ func makeVolumeId(dirPath string, name string) string {
 	return fmt.Sprintf("v1:%s:%d//%s////%s", testHost, testPort, strings.Trim(dirPath, "/"), name)
 }
 
-func TestCreateVolume(t *testing.T) {
-	testDirPath, _, cleanup := requireCluster(t)
-	defer cleanup(t)
+/*   ____                _     __     __    _
+ *  / ___|_ __ ___  __ _| |_ __\ \   / /__ | |_   _ _ __ ___   ___
+ * | |   | '__/ _ \/ _` | __/ _ \ \ / / _ \| | | | | '_ ` _ \ / _ \
+ * | |___| | |  __/ (_| | ||  __/\ V / (_) | | |_| | | | | | |  __/
+ *  \____|_|  \___|\__,_|\__\___| \_/ \___/|_|\__,_|_| |_| |_|\___|
+ *  FIGLET: CreateVolume
+ */
 
-	volumeId := makeVolumeId(testDirPath, "foobar")
-
-	happyRequest := csi.CreateVolumeRequest{
+func makeCreateRequest(testDirPath string) csi.CreateVolumeRequest {
+	return csi.CreateVolumeRequest{
 		Name: "foobar",
 		VolumeCapabilities: []*csi.VolumeCapability{
 			{
@@ -84,98 +87,97 @@ func TestCreateVolume(t *testing.T) {
 			"password": testPassword,
 		},
 	}
+}
 
-	type MakeRequest func() *csi.CreateVolumeRequest
+func TestCreateVolumeNameMissing(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
 
-	cases := []struct {
-		name      string
-		makeReq   MakeRequest
-		expectRet *csi.CreateVolumeResponse
-		expectErr string
-	}{
+	req := makeCreateRequest(testDirPath)
+	req.Name = ""
+
+	_, err := initTestController(t).CreateVolume(context.TODO(), &req)
+
+	assert.EqualError(
+		t,
+		err,
+		"rpc error: code = InvalidArgument desc = CreateVolume name must be provided",
+	)
+}
+
+func TestCreateVolumeInvalidVolumeCapabilities(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	req := makeCreateRequest(testDirPath)
+	req.VolumeCapabilities = []*csi.VolumeCapability{
 		{
-			name:    "happy path",
-			makeReq: func() *csi.CreateVolumeRequest { return &happyRequest },
-			expectRet: &csi.CreateVolumeResponse{
-				Volume: &csi.Volume{
-					VolumeId: volumeId,
-					VolumeContext: map[string]string{
-						paramServer: testHost,
-						paramShare:  "/foobar",
-					},
-				},
+			AccessMode: &csi.VolumeCapability_AccessMode{
+				Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 			},
-		},
-		{
-			name: "name empty",
-			makeReq: func() *csi.CreateVolumeRequest {
-				r := happyRequest
-				r.Name = ""
-				return &r
-			},
-			expectErr: "rpc error: code = InvalidArgument desc = CreateVolume name must be provided",
-		},
-		{
-			name: "invalid volume capabilities",
-			makeReq: func() *csi.CreateVolumeRequest {
-				r := happyRequest
-				r.VolumeCapabilities = []*csi.VolumeCapability{
-					{
-						AccessMode: &csi.VolumeCapability_AccessMode{
-							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
-						},
-					},
-				}
-				return &r
-			},
-			expectErr: "rpc error: code = InvalidArgument desc = volume capability access type not set",
-		},
-		{
-			name: "unknown parameter",
-			makeReq: func() *csi.CreateVolumeRequest {
-				r := happyRequest
-				r.Parameters["wut"] = "ever"
-				return &r
-			},
-			expectErr: "rpc error: code = InvalidArgument desc = invalid parameter \"wut\"",
 		},
 	}
 
-	// XXX scott:
-	// * test idempotency
-	// * more cases and errors
+	_, err := initTestController(t).CreateVolume(context.TODO(), &req)
 
-	for _, test := range cases {
-		test := test //pin
-		t.Run(test.name, func(t *testing.T) {
-			// Setup
-			cs := initTestController(t)
+	assert.EqualError(
+		t,
+		err,
+		"rpc error: code = InvalidArgument desc = volume capability access type not set",
+	)
+}
 
-			// Run
-			ret, err := cs.CreateVolume(context.TODO(), test.makeReq())
+func TestCreateVolumeUnknownParameter(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
 
-			// Verify
-			if len(test.expectErr) != 0 {
-				assert.EqualError(t, err, test.expectErr)
-				return
-			}
+	req := makeCreateRequest(testDirPath)
+	req.Parameters["wut"] = "ever"
 
-			assert.NoError(t, err)
-			if !reflect.DeepEqual(ret, test.expectRet) {
-				t.Errorf("test %q failed: got %+v, expected %+v", test.name, ret, test.expectRet)
-			}
+	_, err := initTestController(t).CreateVolume(context.TODO(), &req)
 
-			qVol, err := makeQumuloVolumeFromID(ret.Volume.VolumeId)
-			assert.NoError(t, err)
+	assert.EqualError(
+		t,
+		err,
+		"rpc error: code = InvalidArgument desc = invalid parameter \"wut\"",
+	)
+}
 
-			attributes, err := testConnection.LookUp(qVol.getVolumeRealPath())
-			assert.NoError(t, err)
+// XXX scott: CreateVolume
+// * test idempotency
+// * more cases and errors
+// * use real errors - or maybe not - the string has the code?
 
-			quotaLimit, err := testConnection.GetQuota(attributes.Id)
-			assert.NoError(t, err)
-			assert.Equal(t, quotaLimit, uint64(1024*1024*1024))
-		})
-	}
+func TestCreateVolumeHappyPath(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	volumeId := makeVolumeId(testDirPath, "foobar")
+
+	req := makeCreateRequest(testDirPath)
+
+	ret, err := initTestController(t).CreateVolume(context.TODO(), &req)
+
+	assert.NoError(t, err)
+
+	assert.Equal(t, ret, &csi.CreateVolumeResponse{
+		Volume: &csi.Volume{
+			VolumeId: volumeId,
+			VolumeContext: map[string]string{
+				paramServer: testHost,
+				paramShare:  "/foobar",
+			},
+		},
+	})
+
+	qVol, err := makeQumuloVolumeFromID(ret.Volume.VolumeId)
+
+	attributes, err := testConnection.LookUp(qVol.getVolumeRealPath())
+	assert.NoError(t, err)
+
+	quotaLimit, err := testConnection.GetQuota(attributes.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, quotaLimit, uint64(1024*1024*1024))
 }
 
 /*  _____                            ___     __    _
