@@ -4,12 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/kubernetes-csi/csi-driver-qumulo/pkg/qumulo"
+	"k8s.io/klog/v2"
 )
 
 func main() {
@@ -22,7 +22,16 @@ func main() {
 	flag.Parse()
 
 	if !*logging {
-		log.SetOutput(ioutil.Discard)
+		vlogFlags := &flag.FlagSet{}
+		klog.InitFlags(vlogFlags)
+		klog.SetOutput(ioutil.Discard)
+		vlogFlags.Set("logtostderr", "false")
+		vlogFlags.Set("alsologtostderr", "false")
+	} else {
+		vlogFlags := &flag.FlagSet{}
+		klog.InitFlags(vlogFlags)
+		vlogFlags.Set("stderrthreshold", "INFO")
+		vlogFlags.Set("v", "3")
 	}
 
 	verb := strings.ToUpper(flag.Args()[0])
@@ -36,14 +45,13 @@ func main() {
 		var err error
 		requestBody, err = ioutil.ReadAll(os.Stdin)
 		if err != nil {
-			log.Fatal(err)
+			klog.Fatal(err)
 		}
 	}
 
 	responseData, err := connection.Do(verb, uri, requestBody)
-
 	if err != nil {
-		log.Fatal(err)
+		klog.Fatal(err)
 	}
 
 	fmt.Println(string(responseData))
