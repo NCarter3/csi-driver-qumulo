@@ -96,6 +96,15 @@ func transFormRestError(err error, transforms map[int]error) error {
 	return err
 }
 
+type CreateParams struct {
+	server          string
+	restPort        int
+	storeRealPath   string
+	storeMountPath  string
+	//storeExportPath string
+	name            string
+}
+
 // An internal representation of a volume created by the provisioner.
 type qumuloVolume struct {
 	// Volume id
@@ -159,11 +168,6 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, err
 	}
 
-	qVol, err := newQumuloVolume(name, req.GetParameters())
-	if err != nil {
-		return nil, err
-	}
-
 	// To get this feature, we need some kind of clone in the product.
 	if req.GetVolumeContentSource() != nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume source unsupported")
@@ -176,7 +180,17 @@ func (cs *ControllerServer) CreateVolume(
 		}
 	*/
 
-	connection, err := createConnection(qVol.server, qVol.restPort, req.GetSecrets())
+	params, err := newCreateParams(name, req.GetParameters())
+	if err != nil {
+		return nil, err
+	}
+
+	connection, err := createConnection(params.server, params.restPort, req.GetSecrets())
+	if err != nil {
+		return nil, err
+	}
+
+	qVol, err := newQumuloVolume(params, connection)
 	if err != nil {
 		return nil, err
 	}
@@ -422,10 +436,7 @@ func (cs *ControllerServer) validateVolumeCapability(c *csi.VolumeCapability) er
 	return nil
 }
 
-// Volume ID formats:
-// v1:server:restPort//storeRealPath//storeMountPath//name
-
-func newQumuloVolume(name string, params map[string]string) (*qumuloVolume, error) {
+func newCreateParams(name string, params map[string]string) (*CreateParams, error) {
 	var (
 		server         string
 		storeRealPath  string
@@ -497,16 +508,32 @@ func newQumuloVolume(name string, params map[string]string) (*qumuloVolume, erro
 	storeRealPath = re.ReplaceAllLiteralString(storeRealPath, "/")
 	storeMountPath = re.ReplaceAllLiteralString(storeMountPath, "/")
 
-	id := "v1:" + server + ":" + strconv.Itoa(restPort) +
-		"//" + storeRealPath + "//" + storeMountPath + "//" + name
-
-	vol := &qumuloVolume{
-		id:             id,
+	ret := &CreateParams{
 		server:         server,
 		restPort:       restPort,
 		storeRealPath:  storeRealPath,
 		storeMountPath: storeMountPath,
 		name:           name,
+	}
+
+	return ret, nil
+}
+
+// Volume ID formats:
+// v1:server:restPort//storeRealPath//storeMountPath//name
+
+func newQumuloVolume(params *CreateParams, connetion *Connection) (*qumuloVolume, error) {
+
+	id := "v1:" + params.server + ":" + strconv.Itoa(params.restPort) +
+		"//" + params.storeRealPath + "//" + params.storeMountPath + "//" + params.name
+
+	vol := &qumuloVolume{
+		id:             id,
+		server:         params.server,
+		restPort:       params.restPort,
+		storeRealPath:  params.storeRealPath,
+		storeMountPath: params.storeMountPath,
+		name:           params.name,
 	}
 
 	return vol, nil

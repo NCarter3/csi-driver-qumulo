@@ -858,13 +858,13 @@ func TestGetQuotaLimit(t *testing.T) {
 	}
 }
 
-func TestNewQumuloVolume(t *testing.T) {
+func TestNewCreateParams(t *testing.T) {
 	cases := []struct {
 		name      string
 		volName   string
 		params    map[string]string
 		expectErr error
-		expectVol *qumuloVolume
+		expectRet *CreateParams
 	}{
 		{
 			name:    "non-numeric port",
@@ -873,7 +873,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				"restport": "x y",
 			},
 			expectErr: status.Error(codes.InvalidArgument, "invalid port \"x y\""),
-			expectVol: nil,
+			expectRet: nil,
 		},
 		{
 			name:    "unknown parameter",
@@ -882,7 +882,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				"blah": "blah",
 			},
 			expectErr: status.Error(codes.InvalidArgument, "invalid parameter \"blah\""),
-			expectVol: nil,
+			expectRet: nil,
 		},
 		{
 			name:    "server is required parameter",
@@ -891,7 +891,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				"StoreRealPath": "/foo",
 			},
 			expectErr: status.Error(codes.InvalidArgument, "server is a required parameter"),
-			expectVol: nil,
+			expectRet: nil,
 		},
 		{
 			name:    "storerealpath is required parameter",
@@ -900,7 +900,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				"server": "foo",
 			},
 			expectErr: status.Error(codes.InvalidArgument, "storerealpath is a required parameter"),
-			expectVol: nil,
+			expectRet: nil,
 		},
 		{
 			name:    "storerealpath must start with slash",
@@ -913,7 +913,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				codes.InvalidArgument,
 				"storerealpath (\"foo\") must start with a '/'",
 			),
-			expectVol: nil,
+			expectRet: nil,
 		},
 		{
 			name:    "storemountpath must start with slash",
@@ -927,7 +927,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				codes.InvalidArgument,
 				"storemountpath (\"blah\") must start with a '/'",
 			),
-			expectVol: nil,
+			expectRet: nil,
 		},
 		{
 			name:    "default path and mount",
@@ -937,8 +937,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				"StoreRealPath": "/foo/bar",
 			},
 			expectErr: nil,
-			expectVol: &qumuloVolume{
-				id:             "v1:somserver:8000//foo/bar//foo/bar//vol1",
+			expectRet: &CreateParams{
 				server:         "somserver",
 				restPort:       8000,
 				storeRealPath:  "foo/bar",
@@ -955,8 +954,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				"restport":      "1234",
 			},
 			expectErr: nil,
-			expectVol: &qumuloVolume{
-				id:             "v1:somserver:1234//foo/bar//foo/bar//vol1",
+			expectRet: &CreateParams{
 				server:         "somserver",
 				restPort:       1234,
 				storeRealPath:  "foo/bar",
@@ -972,8 +970,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				"StoreRealPath": "/",
 			},
 			expectErr: nil,
-			expectVol: &qumuloVolume{
-				id:             "v1:somserver:8000//////vol1",
+			expectRet: &CreateParams{
 				server:         "somserver",
 				restPort:       8000,
 				storeRealPath:  "",
@@ -990,8 +987,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				"storeMountPath": "/",
 			},
 			expectErr: nil,
-			expectVol: &qumuloVolume{
-				id:             "v1:somserver:8000//////vol1",
+			expectRet: &CreateParams{
 				server:         "somserver",
 				restPort:       8000,
 				storeRealPath:  "",
@@ -1008,8 +1004,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				"storeMountPath": "/y/z",
 			},
 			expectErr: nil,
-			expectVol: &qumuloVolume{
-				id:             "v1:somserver:8000//x/y//y/z//vol1",
+			expectRet: &CreateParams{
 				server:         "somserver",
 				restPort:       8000,
 				storeRealPath:  "x/y",
@@ -1026,8 +1021,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				"storeMountPath": "//y/z///",
 			},
 			expectErr: nil,
-			expectVol: &qumuloVolume{
-				id:             "v1:somserver:8000//x/y//y/z//vol1",
+			expectRet: &CreateParams{
 				server:         "somserver",
 				restPort:       8000,
 				storeRealPath:  "x/y",
@@ -1044,8 +1038,7 @@ func TestNewQumuloVolume(t *testing.T) {
 				"storeMountPath": "/d//e///f",
 			},
 			expectErr: nil,
-			expectVol: &qumuloVolume{
-				id:             "v1:somserver:8000//a/b/c//d/e/f//vol1",
+			expectRet: &CreateParams{
 				server:         "somserver",
 				restPort:       8000,
 				storeRealPath:  "a/b/c",
@@ -1058,19 +1051,19 @@ func TestNewQumuloVolume(t *testing.T) {
 	for _, test := range cases {
 		test := test //pin
 		t.Run(test.name, func(t *testing.T) {
-			assert.NotEqual(t, test.expectErr == nil, test.expectVol == nil)
+			assert.NotEqual(t, test.expectErr == nil, test.expectRet == nil)
 
 			// Setup
 
 			// Run
-			vol, err := newQumuloVolume(test.volName, test.params)
+			vol, err := newCreateParams(test.volName, test.params)
 
 			if test.expectErr != nil {
 				assert.Nil(t, vol)
 				assert.Equal(t, err, test.expectErr)
 			} else {
 				assert.Nil(t, err)
-				assert.Equal(t, vol, test.expectVol)
+				assert.Equal(t, vol, test.expectRet)
 			}
 		})
 	}
