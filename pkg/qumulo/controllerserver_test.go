@@ -257,8 +257,10 @@ func TestCreateVolumeHappyPath(t *testing.T) {
 	assert.Equal(t, resp, makeCreateResponse(testDirPath, volumeDir))
 
 	qVol, err := makeQumuloVolumeFromID(resp.Volume.VolumeId)
+	assert.NoError(t, err)
 	attributes, err := testConnection.LookUp(qVol.getVolumeRealPath())
 	assert.NoError(t, err)
+	assert.Equal(t, attributes.Mode, "0777")
 
 	quotaLimit, err := testConnection.GetQuota(attributes.Id)
 	assert.NoError(t, err)
@@ -273,12 +275,21 @@ func TestCreateVolumeDirectoryAndQuotaExists(t *testing.T) {
 	attributes, err := testConnection.CreateDir(testDirPath, volumeDir)
 	assert.NoError(t, err)
 	err = testConnection.CreateQuota(attributes.Id, 2*1024*1024*1024)
+	assert.NoError(t, err)
+	attributes, err = testConnection.FileChmod(attributes.Id, "0555")
+	assert.NoError(t, err)
 
 	req := makeCreateRequest(testDirPath, volumeDir)
 	resp, err := initTestController(t).CreateVolume(context.TODO(), &req)
 
 	assert.NoError(t, err)
 	assert.Equal(t, resp, makeCreateResponse(testDirPath, volumeDir))
+
+	qVol, err := makeQumuloVolumeFromID(resp.Volume.VolumeId)
+	assert.NoError(t, err)
+	attributes, err = testConnection.LookUp(qVol.getVolumeRealPath())
+	assert.NoError(t, err)
+	assert.Equal(t, attributes.Mode, "0777")
 
 	quotaLimit, err := testConnection.GetQuota(attributes.Id)
 	assert.NoError(t, err)

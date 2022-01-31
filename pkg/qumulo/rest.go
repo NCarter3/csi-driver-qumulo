@@ -449,6 +449,35 @@ func (self *Connection) LookUp(path string) (attributes FileAttributes, err erro
 	return
 }
 
+/*  ____       _      _   _   _
+ * / ___|  ___| |_   / \ | |_| |_ _ __
+ * \___ \ / _ \ __| / _ \| __| __| '__|
+ *  ___) |  __/ |_ / ___ \ |_| |_| |
+ * |____/ \___|\__/_/   \_\__|\__|_|
+ *  FIGLET: SetAttr
+ */
+
+type SetattrRequest struct {
+	Mode  string `json:"mode,omitempty"`
+}
+
+func (self *Connection) FileChmod(id string, mode string) (attributes FileAttributes, err error) {
+	uri := fmt.Sprintf("/v1/files/%s/info/attributes", url.QueryEscape(id))
+
+	body := SetattrRequest{Mode: mode}
+	json_data, err := json.Marshal(body)
+	panicOnError(err)
+
+	responseData, err := self.Patch(uri, json_data)
+	if err != nil {
+		return
+	}
+
+	attributes = ParseFileAttributes(responseData)
+
+	return
+}
+
 /*  _____              ____       _      _        ____                _
  * |_   _| __ ___  ___|  _ \  ___| | ___| |_ ___ / ___|_ __ ___  __ _| |_ ___
  *   | || '__/ _ \/ _ \ | | |/ _ \ |/ _ \ __/ _ \ |   | '__/ _ \/ _` | __/ _ \

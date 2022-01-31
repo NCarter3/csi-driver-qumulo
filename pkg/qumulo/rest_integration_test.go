@@ -217,3 +217,39 @@ func TestRestVersion(t *testing.T) {
 		t.Fatalf("Too small test version %v", version)
 	}
 }
+
+func TestRestChmodNotFound(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	path := testDirPath+"/foo"
+
+	_, err := testConnection.FileChmod(path, "0555")
+	assertRestError(t, err, 404, "fs_no_such_entry_error")
+}
+
+func TestRestChmodByPath(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	attributes, err := testConnection.FileChmod(testDirPath, "0555")
+	assert.NoError(t, err)
+	assert.Equal(t, attributes.Mode, "0555")
+
+	attributes, err = testConnection.FileChmod(testDirPath, "0777")
+	assert.NoError(t, err)
+	assert.Equal(t, attributes.Mode, "0777")
+}
+
+func TestRestChmodById(t *testing.T) {
+	_, testDirId, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	attributes, err := testConnection.FileChmod(testDirId, "0555")
+	assert.NoError(t, err)
+	assert.Equal(t, attributes.Mode, "0555")
+
+	attributes, err = testConnection.FileChmod(testDirId, "0777")
+	assert.NoError(t, err)
+	assert.Equal(t, attributes.Mode, "0777")
+}

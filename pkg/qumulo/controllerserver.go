@@ -42,7 +42,6 @@ import (
 // o error type/code for fmt.Errorf uses
 // o gen exports? so we get capacity locally in pods with fsstat
 // o relative exports and stuff - assume / access for now
-// o use assert in test - see qumulo_test.go for module
 // o can we make storeMountPath optional?
 // o probably should not be doing logic on ErrorClass
 
@@ -214,12 +213,14 @@ func (cs *ControllerServer) CreateVolume(
 		)
 	}
 
-	// XXX scott: chmod 0777 new directory?
+	attributes, err = connection.FileChmod(attributes.Id, "0777")
+	if err != nil {
+		return nil, err
+	}
 
 	return &csi.CreateVolumeResponse{Volume: qVol.qumuloVolumeToCSIVolume()}, nil
 }
 
-// DeleteVolume delete a volume
 func (cs *ControllerServer) DeleteVolume(
 	ctx context.Context,
 	req *csi.DeleteVolumeRequest,
