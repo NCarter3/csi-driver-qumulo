@@ -52,8 +52,8 @@ const (
 	// Directory on cluster where volumes are stored.
 	paramStoreRealPath = "storerealpath"
 
-	// Mount path on cluster where volumes are stored.
-	paramStoreMountPath = "storemountpath"
+	// Export through which volumes should be accessed on nodes.
+	paramStoreExportPath = "storeexportpath"
 
 	// Full share path to use on Node.
 	paramShare = "share"

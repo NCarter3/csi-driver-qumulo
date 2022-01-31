@@ -42,7 +42,6 @@ import (
 // o error type/code for fmt.Errorf uses
 // o gen exports? so we get capacity locally in pods with fsstat
 // o relative exports and stuff - assume / access for now
-// o can we make storeMountPath optional?
 // o probably should not be doing logic on ErrorClass
 
 // ControllerServer controller server setting
@@ -100,8 +99,7 @@ type CreateParams struct {
 	server          string
 	restPort        int
 	storeRealPath   string
-	storeMountPath  string
-	//storeExportPath string
+	storeExportPath string
 	name            string
 }
 
@@ -116,13 +114,13 @@ type qumuloVolume struct {
 	// REST API port on cluster (paramRestPort).
 	restPort int
 
-	// Directory where volumes are stored (paramStoreRealPath) - leading and trailing /'s stripped.
+	// Directory where volume is stored.
 	storeRealPath string
 
-	// Mount path where volumes are stored (paramStoreMountPath) - leading or trailing /'s stripped.
+	// Mount path where volume is stored.
 	storeMountPath string
 
-	// Volume name (directory name created under storeRealPath) - from req name.
+	// Volume name (directory name created under storeRealPath and storeMountPath) - from req name.
 	name string
 }
 
@@ -195,7 +193,7 @@ func (cs *ControllerServer) CreateVolume(
 		return nil, err
 	}
 
-	attributes, err := connection.EnsureDir("/"+qVol.storeRealPath, qVol.name)
+	attributes, err := connection.EnsureDir(qVol.storeRealPath, qVol.name)
 	if err != nil {
 		return nil, transFormRestError(
 			err,
@@ -204,13 +202,13 @@ func (cs *ControllerServer) CreateVolume(
 					codes.NotFound,
 					"%s directory %q missing for volume %q",
 					paramStoreRealPath,
-					"/"+qVol.storeRealPath,
+					qVol.storeRealPath,
 					qVol.id,
 				),
 				409: status.Errorf(
 					codes.AlreadyExists,
 					"A non-directory entity exists at %q for volume %q",
-					"/"+qVol.storeRealPath+"/"+qVol.name,
+					qVol.storeRealPath+"/"+qVol.name,
 					qVol.id,
 				),
 			},
@@ -438,11 +436,11 @@ func (cs *ControllerServer) validateVolumeCapability(c *csi.VolumeCapability) er
 
 func newCreateParams(name string, params map[string]string) (*CreateParams, error) {
 	var (
-		server         string
-		storeRealPath  string
-		storeMountPath string
-		restPort       int
-		err            error
+		server          string
+		storeRealPath   string
+		storeExportPath string
+		restPort        int
+		err             error
 	)
 
 	// Default cluster rest port
@@ -456,8 +454,8 @@ func newCreateParams(name string, params map[string]string) (*CreateParams, erro
 			server = v
 		case paramStoreRealPath:
 			storeRealPath = v
-		case paramStoreMountPath:
-			storeMountPath = v
+		case paramStoreExportPath:
+			storeExportPath = v
 		case paramRestPort:
 			restPort, err = strconv.Atoi(v)
 			if err != nil {
@@ -487,33 +485,40 @@ func newCreateParams(name string, params map[string]string) (*CreateParams, erro
 			storeRealPath,
 		)
 	}
+	storeRealPath = strings.TrimRight(storeRealPath, "/")
 
-	if storeMountPath == "" {
-		storeMountPath = storeRealPath
+	if storeExportPath == "" {
+		storeExportPath = "/"
 	}
 
-	if !strings.HasPrefix(storeMountPath, "/") {
+	if !strings.HasPrefix(storeExportPath, "/") {
 		return nil, status.Errorf(
 			codes.InvalidArgument,
 			"%s (%q) must start with a '/'",
-			paramStoreMountPath,
-			storeMountPath,
+			paramStoreExportPath,
+			storeExportPath,
 		)
 	}
 
-	storeRealPath = strings.Trim(storeRealPath, "/")
-	storeMountPath = strings.Trim(storeMountPath, "/")
+	storeExportPath = strings.TrimRight(storeExportPath, "/")
 
 	re := regexp.MustCompile("(///*)")
 	storeRealPath = re.ReplaceAllLiteralString(storeRealPath, "/")
-	storeMountPath = re.ReplaceAllLiteralString(storeMountPath, "/")
+	storeExportPath = re.ReplaceAllLiteralString(storeExportPath, "/")
+
+	if storeRealPath == "" {
+		storeRealPath = "/"
+	}
+	if storeExportPath == "" {
+		storeExportPath = "/"
+	}
 
 	ret := &CreateParams{
-		server:         server,
-		restPort:       restPort,
-		storeRealPath:  storeRealPath,
-		storeMountPath: storeMountPath,
-		name:           name,
+		server:          server,
+		restPort:        restPort,
+		storeRealPath:   storeRealPath,
+		storeExportPath: storeExportPath,
+		name:            name,
 	}
 
 	return ret, nil
@@ -524,15 +529,38 @@ func newCreateParams(name string, params map[string]string) (*CreateParams, erro
 
 func newQumuloVolume(params *CreateParams, connetion *Connection) (*qumuloVolume, error) {
 
+	export, err := connetion.ExportGet(params.storeExportPath)
+	if err != nil {
+		return nil, transFormRestError(
+			err,
+			map[int]error{
+				404: status.Errorf(codes.NotFound, "Export %q not found", params.storeExportPath),
+			},
+		)
+	}
+
+	if !strings.HasPrefix(params.storeRealPath, export.FsPath) {
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			"Volume directory %q would not be accessible via export %q fs_path %q",
+			params.storeRealPath,
+			params.storeExportPath,
+			export.FsPath,
+		)
+	}
+
+	suffix := strings.TrimPrefix(params.storeRealPath, export.FsPath)
+	mountPath := filepath.Join(params.storeExportPath, suffix)
+
 	id := "v1:" + params.server + ":" + strconv.Itoa(params.restPort) +
-		"//" + params.storeRealPath + "//" + params.storeMountPath + "//" + params.name
+		"/" + params.storeRealPath + "/" + mountPath + "//" + params.name
 
 	vol := &qumuloVolume{
 		id:             id,
 		server:         params.server,
 		restPort:       params.restPort,
 		storeRealPath:  params.storeRealPath,
-		storeMountPath: params.storeMountPath,
+		storeMountPath: mountPath,
 		name:           params.name,
 	}
 
@@ -540,12 +568,11 @@ func newQumuloVolume(params *CreateParams, connetion *Connection) (*qumuloVolume
 }
 
 func (vol *qumuloVolume) getVolumeRealPath() string {
-	return filepath.Join(string(filepath.Separator), vol.storeRealPath, vol.name)
+	return filepath.Join(vol.storeRealPath, vol.name)
 }
 
-// Get user-visible share path for the volume
 func (vol *qumuloVolume) getVolumeSharePath() string {
-	return filepath.Join(string(filepath.Separator), vol.storeMountPath, vol.name)
+	return filepath.Join(vol.storeMountPath, vol.name)
 }
 
 func (vol *qumuloVolume) qumuloVolumeToCSIVolume() *csi.Volume {
@@ -575,8 +602,8 @@ func makeQumuloVolumeFromID(id string) (*qumuloVolume, error) {
 		id:             id,
 		server:         tokens[1],
 		restPort:       restPort,
-		storeRealPath:  tokens[3],
-		storeMountPath: tokens[4],
+		storeRealPath:  "/" + tokens[3],
+		storeMountPath: "/" + tokens[4],
 		name:           tokens[5],
 	}, nil
 }

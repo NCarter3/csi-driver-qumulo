@@ -19,7 +19,6 @@ package qumulo
 import (
 	"reflect"
 	"strconv"
-	"strings"
 	"testing"
 
 	"fmt"
@@ -51,7 +50,14 @@ func teardown() {
 }
 
 func makeVolumeId(dirPath string, name string) string {
-	return fmt.Sprintf("v1:%s:%d//%s////%s", testHost, testPort, strings.Trim(dirPath, "/"), name)
+	return fmt.Sprintf(
+		"v1:%s:%d/%s/%s//%s",
+		testHost,
+		testPort,
+		dirPath,
+		dirPath,
+		name,
+	)
 }
 
 /*   ____                _     __     __    _
@@ -77,10 +83,10 @@ func makeCreateRequest(testDirPath string, name string) csi.CreateVolumeRequest 
 		},
 		CapacityRange: &csi.CapacityRange{RequiredBytes: 1024 * 1024 * 1024},
 		Parameters: map[string]string{
-			paramServer:         testHost,
-			paramRestPort:       strconv.Itoa(testPort),
-			paramStoreRealPath:  testDirPath,
-			paramStoreMountPath: "/",
+			paramServer:          testHost,
+			paramRestPort:        strconv.Itoa(testPort),
+			paramStoreRealPath:   testDirPath,
+			paramStoreExportPath: "/",
 		},
 		Secrets: map[string]string{
 			"username": testUsername,
@@ -95,7 +101,7 @@ func makeCreateResponse(testDirPath string, name string) *csi.CreateVolumeRespon
 			VolumeId: makeVolumeId(testDirPath, name),
 			VolumeContext: map[string]string{
 				paramServer: testHost,
-				paramShare:  "/" + name,
+				paramShare:  testDirPath + "/" + name,
 			},
 		},
 	}
@@ -731,8 +737,8 @@ func TestGetQumuloVolumeFromID(t *testing.T) {
 				id:             "v1:server1:444//////volume",
 				server:         "server1",
 				restPort:       444,
-				storeRealPath:  "",
-				storeMountPath: "",
+				storeRealPath:  "/",
+				storeMountPath: "/",
 				name:           "volume",
 			},
 			expectErr: "",
@@ -744,8 +750,8 @@ func TestGetQumuloVolumeFromID(t *testing.T) {
 				id:             "v1:server1:444//foo/bar/baz////volume",
 				server:         "server1",
 				restPort:       444,
-				storeRealPath:  "foo/bar/baz",
-				storeMountPath: "",
+				storeRealPath:  "/foo/bar/baz",
+				storeMountPath: "/",
 				name:           "volume",
 			},
 			expectErr: "",
@@ -757,8 +763,8 @@ func TestGetQumuloVolumeFromID(t *testing.T) {
 				id:             "v1:server1:444//foo/bar/baz//some/export//frog",
 				server:         "server1",
 				restPort:       444,
-				storeRealPath:  "foo/bar/baz",
-				storeMountPath: "some/export",
+				storeRealPath:  "/foo/bar/baz",
+				storeMountPath: "/some/export",
 				name:           "frog",
 			},
 			expectErr: "",
@@ -916,21 +922,21 @@ func TestNewCreateParams(t *testing.T) {
 			expectRet: nil,
 		},
 		{
-			name:    "storemountpath must start with slash",
+			name:    "storeexportpath must start with slash",
 			volName: "vol1",
 			params: map[string]string{
-				"server":         "foo",
-				"StoreRealPath":  "/foo",
-				"storemountpath": "blah",
+				"server":          "foo",
+				"StoreRealPath":   "/foo",
+				"storeexportpath": "blah",
 			},
 			expectErr: status.Error(
 				codes.InvalidArgument,
-				"storemountpath (\"blah\") must start with a '/'",
+				"storeexportpath (\"blah\") must start with a '/'",
 			),
 			expectRet: nil,
 		},
 		{
-			name:    "default path and mount",
+			name:    "default path and export",
 			volName: "vol1",
 			params: map[string]string{
 				"server":        "somserver",
@@ -938,11 +944,11 @@ func TestNewCreateParams(t *testing.T) {
 			},
 			expectErr: nil,
 			expectRet: &CreateParams{
-				server:         "somserver",
-				restPort:       8000,
-				storeRealPath:  "foo/bar",
-				storeMountPath: "foo/bar",
-				name:           "vol1",
+				server:          "somserver",
+				restPort:        8000,
+				storeRealPath:   "/foo/bar",
+				storeExportPath: "/",
+				name:            "vol1",
 			},
 		},
 		{
@@ -955,15 +961,15 @@ func TestNewCreateParams(t *testing.T) {
 			},
 			expectErr: nil,
 			expectRet: &CreateParams{
-				server:         "somserver",
-				restPort:       1234,
-				storeRealPath:  "foo/bar",
-				storeMountPath: "foo/bar",
-				name:           "vol1",
+				server:          "somserver",
+				restPort:        1234,
+				storeRealPath:   "/foo/bar",
+				storeExportPath: "/",
+				name:            "vol1",
 			},
 		},
 		{
-			name:    "root path and default mount",
+			name:    "root path and default export",
 			volName: "vol1",
 			params: map[string]string{
 				"server":        "somserver",
@@ -971,79 +977,79 @@ func TestNewCreateParams(t *testing.T) {
 			},
 			expectErr: nil,
 			expectRet: &CreateParams{
-				server:         "somserver",
-				restPort:       8000,
-				storeRealPath:  "",
-				storeMountPath: "",
-				name:           "vol1",
+				server:          "somserver",
+				restPort:        8000,
+				storeRealPath:   "/",
+				storeExportPath: "/",
+				name:            "vol1",
 			},
 		},
 		{
-			name:    "root path and mount",
+			name:    "root path and export",
 			volName: "vol1",
 			params: map[string]string{
-				"server":         "somserver",
-				"StoreRealPath":  "/",
-				"storeMountPath": "/",
+				"server":          "somserver",
+				"StoreRealPath":   "/",
+				"Storeexportpath": "/",
 			},
 			expectErr: nil,
 			expectRet: &CreateParams{
-				server:         "somserver",
-				restPort:       8000,
-				storeRealPath:  "",
-				storeMountPath: "",
-				name:           "vol1",
+				server:          "somserver",
+				restPort:        8000,
+				storeRealPath:   "/",
+				storeExportPath: "/",
+				name:            "vol1",
 			},
 		},
 		{
-			name:    "path and mount",
+			name:    "path and export",
 			volName: "vol1",
 			params: map[string]string{
-				"server":         "somserver",
-				"StoreRealPath":  "/x/y",
-				"storeMountPath": "/y/z",
+				"server":          "somserver",
+				"StoreRealPath":   "/x/y",
+				"storeexportpath": "/y/z",
 			},
 			expectErr: nil,
 			expectRet: &CreateParams{
-				server:         "somserver",
-				restPort:       8000,
-				storeRealPath:  "x/y",
-				storeMountPath: "y/z",
-				name:           "vol1",
+				server:          "somserver",
+				restPort:        8000,
+				storeRealPath:   "/x/y",
+				storeExportPath: "/y/z",
+				name:            "vol1",
 			},
 		},
 		{
 			name:    "extra leading and trailing slashes",
 			volName: "vol1",
 			params: map[string]string{
-				"server":         "somserver",
-				"StoreRealPath":  "///x/y/",
-				"storeMountPath": "//y/z///",
+				"server":          "somserver",
+				"StoreRealPath":   "///x/y/",
+				"storeexportpath": "//y/z///",
 			},
 			expectErr: nil,
 			expectRet: &CreateParams{
-				server:         "somserver",
-				restPort:       8000,
-				storeRealPath:  "x/y",
-				storeMountPath: "y/z",
-				name:           "vol1",
+				server:          "somserver",
+				restPort:        8000,
+				storeRealPath:   "/x/y",
+				storeExportPath: "/y/z",
+				name:            "vol1",
 			},
 		},
 		{
 			name:    "extra interior slashes",
 			volName: "vol1",
 			params: map[string]string{
-				"server":         "somserver",
-				"StoreRealPath":  "/a//b///c",
-				"storeMountPath": "/d//e///f",
+				"server":          "somserver",
+				"StoreRealPath":   "/a//b///c",
+				"storeExportPath": "/d//e///f",
 			},
 			expectErr: nil,
 			expectRet: &CreateParams{
 				server:         "somserver",
-				restPort:       8000,
-				storeRealPath:  "a/b/c",
-				storeMountPath: "d/e/f",
-				name:           "vol1",
+				restPort:        8000,
+				storeRealPath:   "/a/b/c",
+				storeExportPath: "/d/e/f",
+				name:            "vol1",
 			},
 		},
 	}
@@ -1074,8 +1080,8 @@ func TestGetVolumeRealPathEmpty(t *testing.T) {
 		id:             "v1:somserver:8000////d/e/f//vol1",
 		server:         "somserver",
 		restPort:       8000,
-		storeRealPath:  "",
-		storeMountPath: "d/e/f",
+		storeRealPath:  "/",
+		storeMountPath: "/d/e/f",
 		name:           "vol1",
 	}
 
@@ -1087,8 +1093,8 @@ func TestGetVolumeRealPathNonEmpty(t *testing.T) {
 		id:             "v1:somserver:8000////d/e/f//vol1",
 		server:         "somserver",
 		restPort:       8000,
-		storeRealPath:  "hello/world",
-		storeMountPath: "d/e/f",
+		storeRealPath:  "/hello/world",
+		storeMountPath: "/d/e/f",
 		name:           "vol1",
 	}
 
@@ -1100,8 +1106,8 @@ func TestGetVolumeSharePathEmpty(t *testing.T) {
 		id:             "v1:somserver:8000////d/e/f//vol1",
 		server:         "somserver",
 		restPort:       8000,
-		storeRealPath:  "d/e/f",
-		storeMountPath: "",
+		storeRealPath:  "/d/e/f",
+		storeMountPath: "/",
 		name:           "vol1",
 	}
 
@@ -1113,8 +1119,8 @@ func TestGetVolumeShareNonPathEmpty(t *testing.T) {
 		id:             "v1:somserver:8000////d/e/f//vol1",
 		server:         "somserver",
 		restPort:       8000,
-		storeRealPath:  "d/e/f",
-		storeMountPath: "x/y/z",
+		storeRealPath:  "/d/e/f",
+		storeMountPath: "/x/y/z",
 		name:           "vol1",
 	}
 
@@ -1126,8 +1132,8 @@ func TestQumuloVolumeToCSIVolume(t *testing.T) {
 		id:             "v1:somserver:8000////d/e/f//vol1",
 		server:         "somserver",
 		restPort:       8000,
-		storeRealPath:  "d/e/f",
-		storeMountPath: "x/y/z",
+		storeRealPath:  "/d/e/f",
+		storeMountPath: "/x/y/z",
 		name:           "vol1",
 	}
 
