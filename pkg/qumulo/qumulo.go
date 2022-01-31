@@ -32,10 +32,10 @@ type Driver struct {
 	perm *uint32
 
 	//ids *identityServer
-	ns          *NodeServer
-	cap         map[csi.VolumeCapability_AccessMode_Mode]bool
-	cscap       []*csi.ControllerServiceCapability
-	nscap       []*csi.NodeServiceCapability
+	ns    *NodeServer
+	cap   map[csi.VolumeCapability_AccessMode_Mode]bool
+	cscap []*csi.ControllerServiceCapability
+	nscap []*csi.NodeServiceCapability
 	// XXX scott: not needed?
 	volumeLocks *VolumeLocks
 }

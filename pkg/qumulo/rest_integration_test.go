@@ -222,7 +222,7 @@ func TestRestChmodNotFound(t *testing.T) {
 	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
-	path := testDirPath+"/foo"
+	path := testDirPath + "/foo"
 
 	_, err := testConnection.FileChmod(path, "0555")
 	assertRestError(t, err, 404, "fs_no_such_entry_error")

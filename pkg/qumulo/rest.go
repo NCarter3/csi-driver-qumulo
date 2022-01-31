@@ -458,7 +458,7 @@ func (self *Connection) LookUp(path string) (attributes FileAttributes, err erro
  */
 
 type SetattrRequest struct {
-	Mode  string `json:"mode,omitempty"`
+	Mode string `json:"mode,omitempty"`
 }
 
 func (self *Connection) FileChmod(id string, mode string) (attributes FileAttributes, err error) {

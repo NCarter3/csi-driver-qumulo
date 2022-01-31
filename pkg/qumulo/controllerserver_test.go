@@ -95,7 +95,7 @@ func makeCreateResponse(testDirPath string, name string) *csi.CreateVolumeRespon
 			VolumeId: makeVolumeId(testDirPath, name),
 			VolumeContext: map[string]string{
 				paramServer: testHost,
-				paramShare:  "/"+name,
+				paramShare:  "/" + name,
 			},
 		},
 	}
@@ -192,8 +192,7 @@ func TestCreateVolumeMissingSecrets(t *testing.T) {
 	assert.Equal(
 		t,
 		err,
-		status.Error(codes.Unauthenticated, "username and password secrets missing",
-	))
+		status.Error(codes.Unauthenticated, "username and password secrets missing"))
 }
 
 func TestCreateVolumeAuthFailure(t *testing.T) {
@@ -352,8 +351,7 @@ func TestExpandVolumeMissingSecrets(t *testing.T) {
 	assert.Equal(
 		t,
 		err,
-		status.Error(codes.Unauthenticated, "username and password secrets missing",
-	))
+		status.Error(codes.Unauthenticated, "username and password secrets missing"))
 }
 
 func TestExpandVolumeAuthFailure(t *testing.T) {
