@@ -1,7 +1,6 @@
 package qumulo
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -98,8 +97,7 @@ func TestRestEnsureDirWithFileConflict(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = testConnection.EnsureDir(testDirPath, "x")
-	path := fmt.Sprintf("%s/x", testDirPath)
-	assert.EqualError(t, err, fmt.Sprintf("A non-directory exists at: %q, FS_FILE_TYPE_FILE", path))
+	assertRestError(t, err, 409, "fs_entry_exists_error")
 }
 
 func TestRestCreateQuota(t *testing.T) {

@@ -62,9 +62,9 @@ func makeVolumeId(dirPath string, name string) string {
  *  FIGLET: CreateVolume
  */
 
-func makeCreateRequest(testDirPath string) csi.CreateVolumeRequest {
+func makeCreateRequest(testDirPath string, name string) csi.CreateVolumeRequest {
 	return csi.CreateVolumeRequest{
-		Name: "foobar",
+		Name: name,
 		VolumeCapabilities: []*csi.VolumeCapability{
 			{
 				AccessType: &csi.VolumeCapability_Mount{
@@ -89,19 +89,30 @@ func makeCreateRequest(testDirPath string) csi.CreateVolumeRequest {
 	}
 }
 
+func makeCreateResponse(testDirPath string, name string) *csi.CreateVolumeResponse {
+	return &csi.CreateVolumeResponse{
+		Volume: &csi.Volume{
+			VolumeId: makeVolumeId(testDirPath, name),
+			VolumeContext: map[string]string{
+				paramServer: testHost,
+				paramShare:  "/"+name,
+			},
+		},
+	}
+}
+
 func TestCreateVolumeNameMissing(t *testing.T) {
 	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
-	req := makeCreateRequest(testDirPath)
-	req.Name = ""
+	req := makeCreateRequest(testDirPath, "")
 
 	_, err := initTestController(t).CreateVolume(context.TODO(), &req)
 
-	assert.EqualError(
+	assert.Equal(
 		t,
 		err,
-		"rpc error: code = InvalidArgument desc = CreateVolume name must be provided",
+		status.Error(codes.InvalidArgument, "CreateVolume name must be provided"),
 	)
 }
 
@@ -109,7 +120,7 @@ func TestCreateVolumeInvalidVolumeCapabilities(t *testing.T) {
 	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
-	req := makeCreateRequest(testDirPath)
+	req := makeCreateRequest(testDirPath, "foobar")
 	req.VolumeCapabilities = []*csi.VolumeCapability{
 		{
 			AccessMode: &csi.VolumeCapability_AccessMode{
@@ -120,60 +131,154 @@ func TestCreateVolumeInvalidVolumeCapabilities(t *testing.T) {
 
 	_, err := initTestController(t).CreateVolume(context.TODO(), &req)
 
-	assert.EqualError(
+	assert.Equal(
 		t,
 		err,
-		"rpc error: code = InvalidArgument desc = volume capability access type not set",
+		status.Error(codes.InvalidArgument, "volume capability access type not set"),
 	)
+}
+
+func TestCreateVolumeInvalidCapacityRange(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	req := makeCreateRequest(testDirPath, "foobar")
+	req.CapacityRange = nil
+
+	_, err := initTestController(t).CreateVolume(context.TODO(), &req)
+
+	assert.Equal(t, err, status.Error(codes.InvalidArgument, "CapacityRange must be provided"))
 }
 
 func TestCreateVolumeUnknownParameter(t *testing.T) {
 	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
-	req := makeCreateRequest(testDirPath)
+	req := makeCreateRequest(testDirPath, "foobar")
 	req.Parameters["wut"] = "ever"
 
 	_, err := initTestController(t).CreateVolume(context.TODO(), &req)
 
-	assert.EqualError(
-		t,
-		err,
-		"rpc error: code = InvalidArgument desc = invalid parameter \"wut\"",
-	)
+	assert.Equal(t, err, status.Error(codes.InvalidArgument, "invalid parameter \"wut\""))
 }
 
-// XXX scott: CreateVolume
-// * test idempotency
-// * more cases and errors
-// * use real errors - or maybe not - the string has the code?
+func TestCreateVolumeUnsupportedSource(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	req := makeCreateRequest(testDirPath, "foobar")
+	req.VolumeContentSource = &csi.VolumeContentSource{
+		Type: &csi.VolumeContentSource_Volume{
+			Volume: &csi.VolumeContentSource_VolumeSource{
+				VolumeId: "blah",
+			},
+		},
+	}
+
+	_, err := initTestController(t).CreateVolume(context.TODO(), &req)
+
+	assert.Equal(t, err, status.Error(codes.InvalidArgument, "Volume source unsupported"))
+}
+
+func TestCreateVolumeMissingSecrets(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	req := makeCreateRequest(testDirPath, "foobar")
+	req.Secrets = map[string]string{}
+
+	_, err := initTestController(t).CreateVolume(context.TODO(), &req)
+
+	assert.Equal(
+		t,
+		err,
+		status.Error(codes.Unauthenticated, "username and password secrets missing",
+	))
+}
+
+func TestCreateVolumeAuthFailure(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	req := makeCreateRequest(testDirPath, "foobar")
+	req.Secrets["password"] = testPassword + "asdf"
+
+	_, err := initTestController(t).CreateVolume(context.TODO(), &req)
+	assert.Equal(t, err, status.Error(codes.Unauthenticated, "Login failed: 401"))
+}
+
+func TestCreateVolumeParentDirectoryMissing(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	req := makeCreateRequest(testDirPath, "foobar")
+	badDir := testDirPath + "XYZ"
+	req.Parameters[paramStoreRealPath] = badDir
+
+	_, err := initTestController(t).CreateVolume(context.TODO(), &req)
+	expectedMsg := fmt.Sprintf(
+		"storerealpath directory %q missing for volume %q",
+		badDir,
+		makeVolumeId(badDir, "foobar"),
+	)
+	assert.Equal(t, err, status.Error(codes.NotFound, expectedMsg))
+}
+
+func TestCreateVolumeExistingFile(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	volumeDir := "confict"
+
+	_, err := testConnection.CreateFile(testDirPath, volumeDir)
+	assert.NoError(t, err)
+
+	req := makeCreateRequest(testDirPath, volumeDir)
+
+	_, err = initTestController(t).CreateVolume(context.TODO(), &req)
+	expectedMsg := fmt.Sprintf(
+		"A non-directory entity exists at %q for volume %q",
+		testDirPath+"/"+volumeDir,
+		makeVolumeId(testDirPath, volumeDir),
+	)
+	assert.Equal(t, err, status.Error(codes.AlreadyExists, expectedMsg))
+}
 
 func TestCreateVolumeHappyPath(t *testing.T) {
 	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
-	volumeId := makeVolumeId(testDirPath, "foobar")
+	volumeDir := "vol1"
+	req := makeCreateRequest(testDirPath, volumeDir)
 
-	req := makeCreateRequest(testDirPath)
-
-	ret, err := initTestController(t).CreateVolume(context.TODO(), &req)
+	resp, err := initTestController(t).CreateVolume(context.TODO(), &req)
 
 	assert.NoError(t, err)
+	assert.Equal(t, resp, makeCreateResponse(testDirPath, volumeDir))
 
-	assert.Equal(t, ret, &csi.CreateVolumeResponse{
-		Volume: &csi.Volume{
-			VolumeId: volumeId,
-			VolumeContext: map[string]string{
-				paramServer: testHost,
-				paramShare:  "/foobar",
-			},
-		},
-	})
-
-	qVol, err := makeQumuloVolumeFromID(ret.Volume.VolumeId)
-
+	qVol, err := makeQumuloVolumeFromID(resp.Volume.VolumeId)
 	attributes, err := testConnection.LookUp(qVol.getVolumeRealPath())
 	assert.NoError(t, err)
+
+	quotaLimit, err := testConnection.GetQuota(attributes.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, quotaLimit, uint64(1024*1024*1024))
+}
+
+func TestCreateVolumeDirectoryAndQuotaExists(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	volumeDir := "vol1"
+	attributes, err := testConnection.CreateDir(testDirPath, volumeDir)
+	assert.NoError(t, err)
+	err = testConnection.CreateQuota(attributes.Id, 2*1024*1024*1024)
+
+	req := makeCreateRequest(testDirPath, volumeDir)
+	resp, err := initTestController(t).CreateVolume(context.TODO(), &req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, resp, makeCreateResponse(testDirPath, volumeDir))
 
 	quotaLimit, err := testConnection.GetQuota(attributes.Id)
 	assert.NoError(t, err)
@@ -233,7 +338,11 @@ func TestExpandVolumeMissingSecrets(t *testing.T) {
 	}
 
 	_, err := cs.ControllerExpandVolume(context.TODO(), req)
-	assert.Equal(t, err, status.Error(codes.Unauthenticated, "username and password secrets missing"))
+	assert.Equal(
+		t,
+		err,
+		status.Error(codes.Unauthenticated, "username and password secrets missing",
+	))
 }
 
 func TestExpandVolumeAuthFailure(t *testing.T) {
@@ -254,7 +363,6 @@ func TestExpandVolumeAuthFailure(t *testing.T) {
 	}
 
 	_, err := cs.ControllerExpandVolume(context.TODO(), req)
-	// XXX scott: add these tests for other endpoints that talk to the cluster
 	assert.Equal(t, err, status.Error(codes.Unauthenticated, "Login failed: 401"))
 }
 

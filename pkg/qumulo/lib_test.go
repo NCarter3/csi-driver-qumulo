@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"testing"
 
@@ -94,6 +95,7 @@ func TestMain(m *testing.M) {
 		}
 
 		testFixtureDir = fmt.Sprintf("%s/gotest", testroot)
+		testFixtureDir = regexp.MustCompile("(///*)").ReplaceAllLiteralString(testFixtureDir, "/")
 
 		testConnection = &c
 	}

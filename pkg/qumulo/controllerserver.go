@@ -36,7 +36,7 @@ import (
 // XXX scott:
 // o use better version of semver than blang
 // o GetCapacity
-// o CreateVolume - test Capabilities
+// o CreateVolume - test Capabilities - see validateVolumeCapabilities
 // o add copyright to all files
 // o cache connections? 1 user at a time - could use auth file too
 // o error type/code for fmt.Errorf uses
@@ -150,6 +150,7 @@ func (cs *ControllerServer) CreateVolume(
 	if len(name) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "CreateVolume name must be provided")
 	}
+
 	if err := cs.validateVolumeCapabilities(req.GetVolumeCapabilities()); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -183,7 +184,24 @@ func (cs *ControllerServer) CreateVolume(
 
 	attributes, err := connection.EnsureDir("/"+qVol.storeRealPath, qVol.name)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create volume dir: %v", err.Error())
+		return nil, transFormRestError(
+			err,
+			map[int]error{
+				404: status.Errorf(
+					codes.NotFound,
+					"%s directory %q missing for volume %q",
+					paramStoreRealPath,
+					"/"+qVol.storeRealPath,
+					qVol.id,
+				),
+				409: status.Errorf(
+					codes.AlreadyExists,
+					"A non-directory entity exists at %q for volume %q",
+					"/"+qVol.storeRealPath+"/"+qVol.name,
+					qVol.id,
+				),
+			},
+		)
 	}
 
 	err = connection.EnsureQuota(attributes.Id, quotaLimit)

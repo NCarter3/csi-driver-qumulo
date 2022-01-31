@@ -308,6 +308,8 @@ func (self *Connection) EnsureDir(path string, name string) (attributes FileAttr
 		return
 	}
 
+	conflictErr := err
+
 	fullPath := fmt.Sprintf("%s/%s", path, name)
 	attributes, err = self.LookUp(fullPath)
 	if err != nil {
@@ -315,7 +317,7 @@ func (self *Connection) EnsureDir(path string, name string) (attributes FileAttr
 	}
 
 	if attributes.Type != "FS_FILE_TYPE_DIRECTORY" {
-		err = fmt.Errorf("A non-directory exists at: %q, %v", fullPath, attributes.Type)
+		err = conflictErr
 	}
 
 	return
