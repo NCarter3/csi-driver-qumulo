@@ -253,3 +253,55 @@ func TestRestChmodById(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, attributes.Mode, "0777")
 }
+
+func TestRestGetExportNotFoundPath(t *testing.T) {
+	_, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	_, err := testConnection.ExportGet("/blahhhhhhh")
+	assertRestError(t, err, 404, "nfs_export_doesnt_exist_error")
+}
+
+func TestRestGetExportNotFoundId(t *testing.T) {
+	_, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	_, err := testConnection.ExportGet("999999")
+	assertRestError(t, err, 404, "nfs_export_doesnt_exist_error")
+}
+
+func TestRestGetExportDefaultPath(t *testing.T) {
+	_, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	export, err := testConnection.ExportGet("/")
+	assert.NoError(t, err)
+	assert.Equal(t, export, ExportResponse{"1", "/", "/"})
+}
+
+func TestRestGetExportDefaultId(t *testing.T) {
+	_, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	export, err := testConnection.ExportGet("1")
+	assert.NoError(t, err)
+	assert.Equal(t, export, ExportResponse{"1", "/", "/"})
+}
+
+func TestRestCreateDeleteExport(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	exportPath := "/some/export"
+
+	export, err := testConnection.ExportCreate(exportPath, testDirPath)
+	assert.NoError(t, err)
+	assert.Equal(t, export.ExportPath, exportPath)
+	assert.Equal(t, export.FsPath, testDirPath)
+
+	err = testConnection.ExportDelete(export.ExportPath)
+	assert.NoError(t, err)
+
+	_, err = testConnection.ExportGet(export.ExportPath)
+	assertRestError(t, err, 404, "nfs_export_doesnt_exist_error")
+}

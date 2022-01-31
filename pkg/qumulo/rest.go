@@ -554,3 +554,70 @@ func (self *Connection) GetVersionInfo() (versionInfo QumuloVersionInfo, err err
 
 	return
 }
+
+/*                             _
+ *   _____  ___ __   ___  _ __| |_ ___
+ *  / _ \ \/ / '_ \ / _ \| '__| __/ __|
+ * |  __/>  <| |_) | (_) | |  | |_\__ \
+ *  \___/_/\_\ .__/ \___/|_|   \__|___/
+ *           |_|
+ *  FIGLET: exports
+ */
+
+type ExportResponse struct {
+	Id           string `json:"id"`
+	ExportPath   string `json:"export_path"`
+	FsPath       string `json:"fs_path"`
+}
+
+func (self *Connection) ExportGet(id string) (export ExportResponse, err error) {
+	uri := fmt.Sprintf("/v2/nfs/exports/%s", url.QueryEscape(id))
+
+	responseData, err := self.Get(uri)
+	if err != nil {
+		return
+	}
+
+	json.Unmarshal(responseData, &export)
+
+	return
+}
+
+func (self *Connection) ExportCreate(
+	exportPath string,
+	fsPath string,
+) (export ExportResponse, err error) {
+	// N.B. this isn't full feature, just used for tests
+
+	uri := "/v2/nfs/exports/"
+
+	json_data := fmt.Sprintf(
+		"{\"export_path\": %q, \"fs_path\": %q, \"description\": \"\", " +
+		"\"restrictions\": [{" +
+		"\"read_only\": false, " +
+		"\"require_privileged_port\": false, " +
+		"\"host_restrictions\": [], " +
+		"\"user_mapping\": \"NFS_MAP_NONE\", " +
+		"\"map_to_user\": {\"id_type\": \"LOCAL_USER\", \"id_value\": \"0\"}}]" +
+		"}",
+		exportPath,
+		fsPath,
+	)
+
+	responseData, err := self.Post(uri, []byte(json_data))
+	if err != nil {
+		return
+	}
+
+	json.Unmarshal(responseData, &export)
+
+	return
+}
+
+func (self *Connection) ExportDelete(id string) (err error) {
+	uri := fmt.Sprintf("/v2/nfs/exports/%s", url.QueryEscape(id))
+
+	_, err = self.Delete(uri)
+
+	return
+}
