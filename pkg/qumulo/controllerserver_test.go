@@ -596,7 +596,10 @@ func TestValidateVolumeCapabilities(t *testing.T) {
 			desc:        "Volume capabilities missing",
 			req:         &csi.ValidateVolumeCapabilitiesRequest{VolumeId: testVolumeID},
 			resp:        nil,
-			expectedErr: status.Error(codes.InvalidArgument, "Volume capabilities missing in request"),
+			expectedErr: status.Error(
+				codes.InvalidArgument,
+				"Volume capabilities missing in request",
+			),
 		},
 		{
 			desc: "valid request",
@@ -632,7 +635,11 @@ func TestValidateVolumeCapabilities(t *testing.T) {
 				t.Errorf("test %q failed: %v", test.desc, err)
 			}
 			if test.expectedErr != nil && err == nil {
-				t.Errorf("test %q failed; expected error %v, got success", test.desc, test.expectedErr)
+				t.Errorf(
+					"test %q failed; expected error %v, got success",
+					test.desc,
+					test.expectedErr,
+				)
 			}
 			if !reflect.DeepEqual(resp, test.resp) {
 				t.Errorf("test %q failed: got resp %+v, expected %+v", test.desc, resp, test.resp)

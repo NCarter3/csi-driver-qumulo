@@ -36,15 +36,9 @@ import (
 // XXX scott:
 // o use better version of semver than blang
 // o GetCapacity
-// o CreateVolume - test Capabilities - see validateVolumeCapabilities
 // o add copyright to all files
 // o cache connections? 1 user at a time - could use auth file too
-// o error type/code for fmt.Errorf uses
-// o gen exports? so we get capacity locally in pods with fsstat
-// o relative exports and stuff - assume / access for now
-// o probably should not be doing logic on ErrorClass
 
-// ControllerServer controller server setting
 type ControllerServer struct {
 	Driver *Driver
 }
@@ -170,13 +164,6 @@ func (cs *ControllerServer) CreateVolume(
 	if req.GetVolumeContentSource() != nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume source unsupported")
 	}
-
-	/*
-		var volCap *csi.VolumeCapability
-		if len(req.GetVolumeCapabilities()) > 0 {
-			volCap = req.GetVolumeCapabilities()[0]
-		}
-	*/
 
 	params, err := newCreateParams(name, req.GetParameters())
 	if err != nil {
