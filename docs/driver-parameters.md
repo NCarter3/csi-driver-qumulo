@@ -4,12 +4,50 @@
 ### Storage Class Usage (Dynamic Provisioning)
 > [`StorageClass` example](../deploy/example/storageclass-qumulo.yaml)
 
-Name | Meaning | Example Value | Mandatory | Default value | Notes
---- | --- | --- | --- | --- | ----
-server | Cluster name or IP | Domain name `cluster1.local` <br>Or IP address `4.5.6.7` | Yes | - |
-storeRealPath | Directory on the cluster where volumes are stored | `/csi/volumes` | Yes | - | This directory must exist and be writable by the configured user
-storeExportPath | Export path pods will use to access volumes | `/share1` | No | `/` | The FS path the export points to must be a prefix of storeRealPath.
-restPort | Port used to talk to cluster | 8888 | No | 8000 | Useful for port forwarding or testing
+Name | Meaning | Example Value | Mandatory | Default
+--- | --- | --- | --- | ---
+server | Cluster name or IP | `cluster1.local` <br>`4.5.6.7` | Yes |
+storeRealPath | Directory volumes are stored | `/csi/volumes` | Yes |
+storeExportPath | Export used to access volumes | `/share1` | No | `/` | The FS path the export points to must be a prefix of storeRealPath.
+restPort | Cluster rest port | 8888 | No | 8000
+csi.storage.k8s.io/provisioner-secret-name | Credentials | cluster1-login | Yes |
+csi.storage.k8s.io/provisioner-secret-namespace | Credentials | kube-system | Yes |
+csi.storage.k8s.io/controller-expand-secret-name | Credentials | cluster1-login | Yes |
+csi.storage.k8s.io/controller-expand-secret-namespace | Credentials | kube-system | Yes |
+
+The *storeRealPath* directory must exist on the cluster and be writable by the configured user.
+
+The *storeExportPath* export's `fs_path` must be a prefix of the storeRealPath.
+
+#### Cluster Login Parameters
+
+- csi.storage.k8s.io/provisioner-secret-name: cluster1-login
+- csi.storage.k8s.io/provisioner-secret-namespace: kube-system
+- csi.storage.k8s.io/controller-expand-secret-name: cluster1-login
+- csi.storage.k8s.io/controller-expand-secret-namespace: kube-system
+
+These two pairs of parameters specify the secret name and secret namespace for
+the secret which contains the username and password to talk to the cluster
+with. One set is used for volume creation and deletion and the second set is
+used during volume expansion. It's recommended to use the same secret (and thus
+the same user) for both sets of operations.
+
+The configured username must have the following privileges to operate:
+
+* Look up on `storeRealPath`
+* Directory creation in `storeRealPath`
+* Creating and modifying quotas (PRIVILEGE_QUOTA_READ)
+* TreeDelete of volume directories (PRIVILEGE_FS_DELETE_TREE_WRITE)
+
+The `admin` user has all these rights, or you can use RBAC on the cluster to use another user.
+
+An example of creating secrets for the username `bill` with password `SuperSecret`
+
+```
+% kubectl create secret generic cluster1-login --type="kubernetes.io/basic-auth" --from-literal=username=bill --from-literal=password=SuperSecret --namespace=kube-system
+```
+
+*TODO document mountOptions and visit the static stuff below*
 
 ### PV/PVC Usage (Static Provisioning)
 > [`PersistentVolume` example](../deploy/example/pv-nfs-csi.yaml)
