@@ -120,7 +120,9 @@ func (n *Driver) Run(testMode bool) {
 	s.Wait()
 }
 
-func (n *Driver) AddVolumeCapabilityAccessModes(vc []csi.VolumeCapability_AccessMode_Mode) []*csi.VolumeCapability_AccessMode {
+func (n *Driver) AddVolumeCapabilityAccessModes(
+	vc []csi.VolumeCapability_AccessMode_Mode,
+) []*csi.VolumeCapability_AccessMode {
 	var vca []*csi.VolumeCapability_AccessMode
 	for _, c := range vc {
 		klog.Infof("Enabling volume access mode: %v", c.String())

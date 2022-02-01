@@ -105,5 +105,4 @@ func TestGetPluginCapabilities(t *testing.T) {
 	assert.NotNil(t, resp)
 	assert.Equal(t, resp.XXX_sizecache, int32(0))
 	assert.Equal(t, resp.Capabilities, expectedCap)
-
 }

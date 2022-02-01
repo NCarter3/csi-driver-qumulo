@@ -70,14 +70,28 @@ func TestParseEndpoint(t *testing.T) {
 				t.Errorf("test %q failed: %v", test.desc, err)
 			}
 			if test.expectedErr != nil && err == nil {
-				t.Errorf("test %q failed; expected error %v, got success", test.desc, test.expectedErr)
+				t.Errorf(
+					"test %q failed; expected error %v, got success",
+					test.desc,
+					test.expectedErr,
+				)
 			}
 			if test.expectedErr == nil {
 				if test.resproto != proto {
-					t.Errorf("test %q failed; expected proto %v, got proto %v", test.desc, test.resproto, proto)
+					t.Errorf(
+						"test %q failed; expected proto %v, got proto %v",
+						test.desc,
+						test.resproto,
+						proto,
+					)
 				}
 				if test.respaddr != addr {
-					t.Errorf("test %q failed; expected addr %v, got addr %v", test.desc, test.respaddr, addr)
+					t.Errorf(
+						"test %q failed; expected addr %v, got addr %v",
+						test.desc,
+						test.respaddr,
+						addr,
+					)
 				}
 			}
 		})
