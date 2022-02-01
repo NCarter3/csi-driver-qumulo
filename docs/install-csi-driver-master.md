@@ -7,33 +7,33 @@ If you have already installed Helm, you can also use it to install Qumulo CSI dr
 ## Install with kubectl
  - remote install
 ```console
-curl -skSL https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/install-driver.sh | bash -s master --
+curl -skSL https://raw.githubusercontent.com/scotturban/csi-driver-qumulo/master/deploy/install-driver.sh | bash -s master --
 ```
 
  - local install
 ```console
-git clone https://github.com/kubernetes-csi/csi-driver-nfs.git
-cd csi-driver-nfs
+git clone https://github.com/scotturban/csi-driver-qumulo.git
+cd csi-driver-qumulo
 ./deploy/install-driver.sh master local
 ```
 
 - check pods status:
 ```console
-kubectl -n kube-system get pod -o wide -l app=csi-nfs-controller
-kubectl -n kube-system get pod -o wide -l app=csi-nfs-node
+kubectl -n kube-system get pod -o wide -l app=csi-qumulo-controller
+kubectl -n kube-system get pod -o wide -l app=csi-qumulo-node
 ```
 
 example output:
 
 ```console
-NAME                                       READY   STATUS    RESTARTS   AGE     IP             NODE
-csi-nfs-controller-56bfddd689-dh5tk       4/4     Running   0          35s     10.240.0.19    k8s-agentpool-22533604-0
-csi-nfs-controller-56bfddd689-8pgr4       4/4     Running   0          35s     10.240.0.35    k8s-agentpool-22533604-1
-csi-nfs-node-cvgbs                        3/3     Running   0          35s     10.240.0.35    k8s-agentpool-22533604-1
-csi-nfs-node-dr4s4                        3/3     Running   0          35s     10.240.0.4     k8s-agentpool-22533604-0
+NAME                                     READY   STATUS    RESTARTS   AGE     IP             NODE       NOMINATED NODE   READINESS GATES
+csi-qumulo-controller-5fc9fc98cc-wbv8b   4/4     Running   0          5h29m   192.168.49.2   minikube   <none>           <none>
+
+NAME                    READY   STATUS    RESTARTS   AGE     IP             NODE       NOMINATED NODE   READINESS GATES
+csi-qumulo-node-84lvs   3/3     Running   0          5h29m   192.168.49.2   minikube   <none>           <none>
 ```
 
-- clean up NFS CSI driver
+- clean up Qumulo CSI driver
 ```console
-curl -skSL https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/uninstall-driver.sh | bash -s master --
+curl -skSL https://raw.githubusercontent.com/scotturban/csi-driver-qumulo/master/deploy/uninstall-driver.sh | bash -s master --
 ```

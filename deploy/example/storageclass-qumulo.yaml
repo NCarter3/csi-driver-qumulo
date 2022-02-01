@@ -1,0 +1,25 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: cluster1
+provisioner: qumulo.csi.k8s.io
+parameters:
+  server: 10.116.10.177
+  restPort: "18154"
+  storeRealPath: "/regions/4234/volumes"
+  storeExportPath: "/some/export"
+  csi.storage.k8s.io/provisioner-secret-name: cluster1-login
+  csi.storage.k8s.io/provisioner-secret-namespace: kube-system
+  csi.storage.k8s.io/controller-expand-secret-name: cluster1-login
+  csi.storage.k8s.io/controller-expand-secret-namespace: kube-system
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+mountOptions:
+  - nolock
+  - intr
+  - proto=tcp
+  - mountport=24347
+  - port=16297
+allowVolumeExpansion: true
+
