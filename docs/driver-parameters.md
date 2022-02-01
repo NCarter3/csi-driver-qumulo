@@ -5,12 +5,10 @@
 > [`StorageClass` example](../deploy/example/storageclass-qumulo.yaml)
 
 Name | Meaning | Example Value | Mandatory | Default value | Notes
---- | --- | --- | --- | ---
+--- | --- | --- | --- | --- | ----
 server | Cluster name or IP | Domain name `cluster1.local` <br>Or IP address `4.5.6.7` | Yes | - |
-storeRealPath | Directory on the cluster where volumes are stored | `/csi/volumes` | Yes | - | This
-directory must exist and be writable by the configured user
-storeExportPath | Export path pods will use to access volumes | `/share1` | No | `/` | The FS path
-the export points to must be a prefix of storeRealPath.
+storeRealPath | Directory on the cluster where volumes are stored | `/csi/volumes` | Yes | - | This directory must exist and be writable by the configured user
+storeExportPath | Export path pods will use to access volumes | `/share1` | No | `/` | The FS path the export points to must be a prefix of storeRealPath.
 restPort | Port used to talk to cluster | 8888 | No | 8000 | Useful for port forwarding or testing
 
 ### PV/PVC Usage (Static Provisioning)
