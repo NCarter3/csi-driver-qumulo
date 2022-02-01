@@ -36,8 +36,6 @@ type Driver struct {
 	cap   map[csi.VolumeCapability_AccessMode_Mode]bool
 	cscap []*csi.ControllerServiceCapability
 	nscap []*csi.NodeServiceCapability
-	// XXX scott: not needed?
-	volumeLocks *VolumeLocks
 }
 
 const (
@@ -93,7 +91,6 @@ func NewDriver(nodeID, driverName, endpoint string, perm *uint32) *Driver {
 		csi.NodeServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
 		csi.NodeServiceCapability_RPC_UNKNOWN,
 	})
-	n.volumeLocks = NewVolumeLocks()
 	return n
 }
 
