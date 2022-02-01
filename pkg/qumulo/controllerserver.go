@@ -538,8 +538,14 @@ func newQumuloVolume(params *CreateParams, connetion *Connection) (*qumuloVolume
 	suffix := strings.TrimPrefix(params.storeRealPath, export.FsPath)
 	mountPath := filepath.Join(params.storeExportPath, suffix)
 
-	id := "v1:" + params.server + ":" + strconv.Itoa(params.restPort) +
-		"/" + params.storeRealPath + "/" + mountPath + "//" + params.name
+	id := fmt.Sprintf(
+		"v1:%s:%d/%s/%s//%s",
+		params.server,
+		params.restPort,
+		params.storeRealPath,
+		mountPath,
+		params.name,
+	)
 
 	vol := &qumuloVolume{
 		id:             id,
