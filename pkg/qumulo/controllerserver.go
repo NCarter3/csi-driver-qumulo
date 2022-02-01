@@ -434,7 +434,6 @@ func newCreateParams(name string, params map[string]string) (*CreateParams, erro
 	restPort = 8000
 
 	// Validate parameters (case-insensitive).
-	// TODO do more strict validation.
 	for k, v := range params {
 		switch strings.ToLower(k) {
 		case paramServer:

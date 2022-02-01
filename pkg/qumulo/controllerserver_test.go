@@ -49,13 +49,13 @@ func teardown() {
 	// XXX scott: did have mount removal - use in e2e tests? - see the fixture stuff in lib_test.go
 }
 
-func makeVolumeId(dirPath string, name string) string {
+func makeVolumeId(dirPath string, sharePath string, name string) string {
 	return fmt.Sprintf(
 		"v1:%s:%d/%s/%s//%s",
 		testHost,
 		testPort,
 		dirPath,
-		dirPath,
+		sharePath,
 		name,
 	)
 }
@@ -98,7 +98,7 @@ func makeCreateRequest(testDirPath string, name string) csi.CreateVolumeRequest 
 func makeCreateResponse(testDirPath string, name string) *csi.CreateVolumeResponse {
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			VolumeId: makeVolumeId(testDirPath, name),
+			VolumeId: makeVolumeId(testDirPath, testDirPath, name),
 			VolumeContext: map[string]string{
 				paramServer: testHost,
 				paramShare:  testDirPath + "/" + name,
@@ -224,7 +224,7 @@ func TestCreateVolumeParentDirectoryMissing(t *testing.T) {
 	expectedMsg := fmt.Sprintf(
 		"storerealpath directory %q missing for volume %q",
 		badDir,
-		makeVolumeId(badDir, "foobar"),
+		makeVolumeId(badDir, badDir, "foobar"),
 	)
 	assert.Equal(t, err, status.Error(codes.NotFound, expectedMsg))
 }
@@ -244,9 +244,48 @@ func TestCreateVolumeExistingFile(t *testing.T) {
 	expectedMsg := fmt.Sprintf(
 		"A non-directory entity exists at %q for volume %q",
 		testDirPath+"/"+volumeDir,
-		makeVolumeId(testDirPath, volumeDir),
+		makeVolumeId(testDirPath, testDirPath, volumeDir),
 	)
 	assert.Equal(t, err, status.Error(codes.AlreadyExists, expectedMsg))
+}
+
+func TestCreateVolumeExportNotFound(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	req := makeCreateRequest(testDirPath, "vol1")
+	exportPath := "/csitest/some/export"
+	req.Parameters[paramStoreExportPath] = exportPath
+
+	_, err := initTestController(t).CreateVolume(context.TODO(), &req)
+
+	assert.Equal(t, err, status.Errorf(codes.NotFound, "Export %q not found", exportPath))
+}
+
+func TestCreateVolumeNoExportOverlap(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	_, err := testConnection.CreateDir(testDirPath, "bar")
+	assert.NoError(t, err)
+	exportPath := "/gotest/some/export"
+	exportFsPath := testDirPath + "/bar"
+	_, err = testConnection.ExportCreate(exportPath, exportFsPath)
+	assert.NoError(t, err)
+	defer testConnection.ExportDelete(exportPath)
+
+	req := makeCreateRequest(testDirPath, "vol1")
+	req.Parameters[paramStoreExportPath] = exportPath
+
+	_, err = initTestController(t).CreateVolume(context.TODO(), &req)
+
+	expectedMsg := fmt.Sprintf(
+		"Volume directory %q would not be accessible via export %q fs_path %q",
+		testDirPath,
+		exportPath,
+		exportFsPath,
+	)
+	assert.Equal(t, err, status.Errorf(codes.InvalidArgument, expectedMsg))
 }
 
 func TestCreateVolumeHappyPath(t *testing.T) {
@@ -272,7 +311,7 @@ func TestCreateVolumeHappyPath(t *testing.T) {
 	assert.Equal(t, quotaLimit, uint64(1024*1024*1024))
 }
 
-func TestCreateVolumeDirectoryAndQuotaExists(t *testing.T) {
+func TestCreateVolumeHappyPathIdempotency(t *testing.T) {
 	testDirPath, _, cleanup := requireCluster(t)
 	defer cleanup(t)
 
@@ -300,6 +339,48 @@ func TestCreateVolumeDirectoryAndQuotaExists(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, quotaLimit, uint64(1024*1024*1024))
 }
+
+func TestCreateVolumeHappyPathDifferentExport(t *testing.T) {
+	testDirPath, _, cleanup := requireCluster(t)
+	defer cleanup(t)
+
+	exportPath := "/gotest/some/export"
+	_, err := testConnection.ExportCreate(exportPath, testDirPath)
+	assert.NoError(t, err)
+	defer testConnection.ExportDelete(exportPath)
+
+	volumeDir := "vol1"
+	req := makeCreateRequest(testDirPath, volumeDir)
+	req.Parameters[paramStoreExportPath] = exportPath
+
+	resp, err := initTestController(t).CreateVolume(context.TODO(), &req)
+
+	assert.NoError(t, err)
+	assert.Equal(
+		t,
+		resp,
+		&csi.CreateVolumeResponse{
+			Volume: &csi.Volume{
+				VolumeId: makeVolumeId(testDirPath, exportPath, volumeDir),
+				VolumeContext: map[string]string{
+					paramServer: testHost,
+					paramShare:  exportPath + "/" + volumeDir,
+				},
+			},
+		},
+	)
+
+	qVol, err := makeQumuloVolumeFromID(resp.Volume.VolumeId)
+	assert.NoError(t, err)
+	attributes, err := testConnection.LookUp(qVol.getVolumeRealPath())
+	assert.NoError(t, err)
+	assert.Equal(t, attributes.Mode, "0777")
+
+	quotaLimit, err := testConnection.GetQuota(attributes.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, quotaLimit, uint64(1024*1024*1024))
+}
+
 
 /*  _____                            ___     __    _
  * | ____|_  ___ __   __ _ _ __   __| \ \   / /__ | |_   _ _ __ ___   ___
@@ -345,7 +426,7 @@ func TestExpandVolumeMissingSecrets(t *testing.T) {
 
 	cs := initTestController(t)
 
-	volumeId := makeVolumeId(testDirPath, "foobar")
+	volumeId := makeVolumeId(testDirPath, testDirPath, "foobar")
 
 	req := &csi.ControllerExpandVolumeRequest{
 		VolumeId:      volumeId,
@@ -366,7 +447,7 @@ func TestExpandVolumeAuthFailure(t *testing.T) {
 
 	cs := initTestController(t)
 
-	volumeId := makeVolumeId(testDirPath, "foobar")
+	volumeId := makeVolumeId(testDirPath, testDirPath, "foobar")
 
 	req := &csi.ControllerExpandVolumeRequest{
 		VolumeId:      volumeId,
@@ -387,7 +468,7 @@ func TestExpandVolumeVolumeDirectoryNotFound(t *testing.T) {
 
 	cs := initTestController(t)
 
-	volumeId := makeVolumeId(testDirPath, "foobar")
+	volumeId := makeVolumeId(testDirPath, testDirPath, "foobar")
 
 	req := &csi.ControllerExpandVolumeRequest{
 		VolumeId:      volumeId,
@@ -408,7 +489,7 @@ func TestExpandVolumeVolumeHappyPath(t *testing.T) {
 
 	cs := initTestController(t)
 
-	volumeId := makeVolumeId(testDirPath, "foobar")
+	volumeId := makeVolumeId(testDirPath, testDirPath, "foobar")
 
 	req := &csi.ControllerExpandVolumeRequest{
 		VolumeId:      volumeId,
@@ -472,7 +553,7 @@ func TestDeleteVolumeMissingSecrets(t *testing.T) {
 
 	cs := initTestController(t)
 
-	volumeId := makeVolumeId(testDirPath, "foobar")
+	volumeId := makeVolumeId(testDirPath, testDirPath, "foobar")
 
 	req := &csi.DeleteVolumeRequest{
 		VolumeId: volumeId,
@@ -489,7 +570,7 @@ func TestDeleteVolumeAuthFailure(t *testing.T) {
 
 	cs := initTestController(t)
 
-	volumeId := makeVolumeId(testDirPath, "foobar")
+	volumeId := makeVolumeId(testDirPath, testDirPath, "foobar")
 
 	req := &csi.DeleteVolumeRequest{
 		VolumeId: volumeId,
@@ -509,7 +590,7 @@ func TestDeleteVolumeHappyPath(t *testing.T) {
 
 	cs := initTestController(t)
 
-	volumeId := makeVolumeId(testDirPath, "foobar")
+	volumeId := makeVolumeId(testDirPath, testDirPath, "foobar")
 
 	req := &csi.DeleteVolumeRequest{
 		VolumeId: volumeId,
@@ -543,7 +624,7 @@ func TestDeleteVolumeMissingDirectory(t *testing.T) {
 
 	cs := initTestController(t)
 
-	volumeId := makeVolumeId(testDirPath, "foobar")
+	volumeId := makeVolumeId(testDirPath, testDirPath, "foobar")
 
 	req := &csi.DeleteVolumeRequest{
 		VolumeId: volumeId,
