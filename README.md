@@ -1,9 +1,11 @@
-# CSI NFS driver
+# Qumulo CSI driver
+<!---
 [![Coverage Status](https://coveralls.io/repos/github/kubernetes-csi/csi-driver-nfs/badge.svg?branch=master)](https://coveralls.io/github/kubernetes-csi/csi-driver-nfs?branch=master)
+-->
 
 ### Overview
 
-This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System) [CSI](https://kubernetes-csi.github.io/docs/) driver, csi plugin name: `nfs.csi.k8s.io`. This driver requires existing and already configured NFSv3 or NFSv4 server, it supports dynamic provisioning of Persistent Volumes via Persistent Volume Claims by creating a new sub directory under NFS server.
+This is a repository for [Qumulo](https://qumulo.com/) [CSI](https://kubernetes-csi.github.io/docs/) driver, csi plugin name: `qumulo.csi.k8s.io`. This driver requires an existing Qumulo cluster configured with NFSv3 or NFSv4 exports. It support static provisioning with pre-existing exports. It supports dynamic provisioning of Persistent Volumes via Persistent Volume Claims by creating sub directories and quotas as needed.
 
 ### Project status: Beta
 
@@ -11,15 +13,13 @@ This is a repository for [NFS](https://en.wikipedia.org/wiki/Network_File_System
 |driver version  | supported k8s version | status |
 |----------------|-----------------------|--------|
 |master branch   | 1.19+                 | beta   |
-|v3.0.0          | 1.19+                 | beta   |
-|v2.0.0          | 1.14+                 | alpha  |
 
 ### Install driver on a Kubernetes cluster
- - install by [kubectl](./docs/install-nfs-csi-driver.md)
+ - install by [kubectl](./docs/install-qumulo-csi-driver.md)
  - install by [helm charts](./charts)
 
 ### Driver parameters
-Please refer to [`nfs.csi.k8s.io` driver parameters](./docs/driver-parameters.md)
+Please refer to [`qumulo.csi.k8s.io` driver parameters](./docs/driver-parameters.md)
 
 ### Examples
  - [Set up a NFS Server on a Kubernetes cluster](./deploy/example/nfs-provisioner/README.md)

@@ -1,6 +1,8 @@
-# Install NFS CSI driver master version on a kubernetes cluster
+# Install Qumulo CSI driver master version on a kubernetes cluster
 
-If you have already installed Helm, you can also use it to install NFS CSI driver. Please see [Installation with Helm](../charts/README.md).
+*TODO: helm not yet working.*
+
+If you have already installed Helm, you can also use it to install Qumulo CSI driver. Please see [Installation with Helm](../charts/README.md).
 
 ## Install with kubectl
  - remote install
