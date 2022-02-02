@@ -6,7 +6,7 @@
 
 Name | Meaning | Example Value | Mandatory | Default
 --- | --- | --- | --- | ---
-server | Cluster name or IP | `cluster1.local` <br>`4.5.6.7` | Yes |
+server | Cluster name or IP | `cluster1.local` <br>Or `4.5.6.7` | Yes |
 storeRealPath | Directory volumes are stored | `/csi/volumes` | Yes |
 storeExportPath | Export used to access volumes | `/share1` | No | `/` | The FS path the export points to must be a prefix of storeRealPath.
 restPort | Cluster rest port | 8888 | No | 8000
@@ -47,12 +47,15 @@ An example of creating secrets for the username `bill` with password `SuperSecre
 % kubectl create secret generic cluster1-login --type="kubernetes.io/basic-auth" --from-literal=username=bill --from-literal=password=SuperSecret --namespace=kube-system
 ```
 
-*TODO document mountOptions and visit the static stuff below*
+The `mountOptions` spec can be used to control how the node mounts the created volume.
 
 ### PV/PVC Usage (Static Provisioning)
-> [`PersistentVolume` example](../deploy/example/pv-nfs-csi.yaml)
+> [`PersistentVolume` example](../deploy/example/static-pv.yaml)
+
+The volume size specification (spec.capacity.storage) has no effect with static volumes.
 
 Name | Meaning | Example Value | Mandatory | Default value
 --- | --- | --- | --- | ---
-volumeAttributes.server | NFS Server endpoint | Domain name `nfs-server.default.svc.cluster.local` <br>Or IP address `127.0.0.1` | Yes |
-volumeAttributes.share | NFS share path | `/` |  Yes  |
+volumeAttributes.server | NFS Server endpoint | `cluster1` <br>Or `127.0.0.1` | Yes |
+volumeAttributes.share | NFS export path | `/` |  Yes  |
+
