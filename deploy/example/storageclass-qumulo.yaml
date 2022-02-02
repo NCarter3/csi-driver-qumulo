@@ -19,7 +19,5 @@ mountOptions:
   - nolock
   - intr
   - proto=tcp
-  - mountport=24347
-  - port=16297
 allowVolumeExpansion: true
 

@@ -6,20 +6,20 @@
 
 Name | Meaning | Example Value | Mandatory | Default
 --- | --- | --- | --- | ---
-server | Cluster name or IP | `cluster1.local` <br>Or `4.5.6.7` | Yes |
+server | Qumulo cluster name or IP | `cluster1` <br>Or `4.5.6.7` | Yes |
 storeRealPath | Directory volumes are stored | `/csi/volumes` | Yes |
 storeExportPath | Export used to access volumes | `/share1` | No | `/` | The FS path the export points to must be a prefix of storeRealPath.
-restPort | Cluster rest port | 8888 | No | 8000
+restPort | Qumulo cluster rest port | 8888 | No | 8000
 csi.storage.k8s.io/provisioner-secret-name | Credentials | cluster1-login | Yes |
 csi.storage.k8s.io/provisioner-secret-namespace | Credentials | kube-system | Yes |
 csi.storage.k8s.io/controller-expand-secret-name | Credentials | cluster1-login | Yes |
 csi.storage.k8s.io/controller-expand-secret-namespace | Credentials | kube-system | Yes |
 
-The *storeRealPath* directory must exist on the cluster and be writable by the configured user.
+The *storeRealPath* directory must exist on the Qumulo cluster and be writable by the configured user.
 
-The *storeExportPath* export's `fs_path` must be a prefix of the storeRealPath.
+The *storeExportPath* export must with exist with an `FS Path` which is partial or full prefix of the storeRealPath.
 
-#### Cluster Login Parameters
+#### Qumulo Cluster Login Parameters
 
 - csi.storage.k8s.io/provisioner-secret-name: cluster1-login
 - csi.storage.k8s.io/provisioner-secret-namespace: kube-system
@@ -27,7 +27,7 @@ The *storeExportPath* export's `fs_path` must be a prefix of the storeRealPath.
 - csi.storage.k8s.io/controller-expand-secret-namespace: kube-system
 
 These two pairs of parameters specify the secret name and secret namespace for
-the secret which contains the username and password to talk to the cluster
+the secret which contains the username and password to talk to the Qumulo cluster
 with. One set is used for volume creation and deletion and the second set is
 used during volume expansion. It's recommended to use the same secret (and thus
 the same user) for both sets of operations.

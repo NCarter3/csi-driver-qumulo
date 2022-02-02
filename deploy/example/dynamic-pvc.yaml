@@ -2,11 +2,11 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: pvc-nfs-dynamic
+  name: claim1
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
+  storageClassName: cluster1
   resources:
     requests:
-      storage: 10Gi
-  storageClassName: nfs-csi
+      storage: 1Gi
