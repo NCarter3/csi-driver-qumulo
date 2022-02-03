@@ -14,7 +14,7 @@ spec:
       labels:
         app: csi-qumulo-controller
     spec:
-      hostNetwork: true  # controller also needs to mount nfs to create dir
+      hostNetwork: true  # controller needs to communicate with Qumulo clusters
       dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: csi-qumulo-controller-sa
       nodeSelector:

@@ -110,13 +110,7 @@ func (n *Driver) Run(testMode bool) {
 
 	n.ns = NewNodeServer(n, mount.New(""))
 	s := NewNonBlockingGRPCServer()
-	s.Start(n.endpoint,
-		NewDefaultIdentityServer(n),
-		// NFS plugin has not implemented ControllerServer
-		// using default controllerserver.
-		NewControllerServer(n),
-		n.ns,
-		testMode)
+	s.Start(n.endpoint, NewDefaultIdentityServer(n), NewControllerServer(n), n.ns, testMode)
 	s.Wait()
 }
 
