@@ -17,8 +17,8 @@
 set -e
 
 NS=kube-system
-CONTAINER=nfs
-DRIVER=nfs
+CONTAINER=qumulo
+DRIVER=qumulo
 if [[ "$#" -gt 0 ]]; then
     DRIVER=$1
 fi
