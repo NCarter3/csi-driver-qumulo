@@ -3,13 +3,13 @@
 ## How to build this project
  - Clone repo
 ```console
-$ mkdir -p $GOPATH/src/sigs.k8s.io/
-$ git clone https://github.com/kubernetes-csi/csi-driver-nfs $GOPATH/src/github.com/kubernetes-csi/csi-driver-nfs
+$ mkdir -p $GOPATH/src/github.com
+$ git clone https://github.com/scotturban/csi-driver-qumulo $GOPATH/src/github.com/csi-driver-qumulo
 ```
 
  - Build CSI driver
 ```console
-$ cd $GOPATH/src/github.com/kubernetes-csi/csi-driver-nfs
+$ cd $GOPATH/src/github.com/csi-driver-qumulo
 $ make
 ```
 
