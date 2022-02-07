@@ -2,15 +2,15 @@
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  name: daemonset-nfs-ephemeral
+  name: daemonset-qumulo-ephemeral
 spec:
   selector:
     matchLabels:
-      app: daemonset-nfs-ephemeral
+      app: daemonset-qumulo-ephemeral
   template:
     metadata:
       labels:
-        app: daemonset-nfs-ephemeral
+        app: daemonset-qumulo-ephemeral
     spec:
       nodeSelector:
         kubernetes.io/os: linux
@@ -35,4 +35,4 @@ spec:
                 resources:
                   requests:
                     storage: 10Gi
-                storageClassName: nfs-csi
+                storageClassName: qumulo-csi

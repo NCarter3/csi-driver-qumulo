@@ -2,11 +2,11 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: statefulset-nfs
+  name: statefulset-qumulo
   labels:
     app: nginx
 spec:
-  serviceName: statefulset-nfs
+  serviceName: statefulset-qumulo
   replicas: 1
   template:
     metadata:
@@ -16,7 +16,7 @@ spec:
       nodeSelector:
         "kubernetes.io/os": linux
       containers:
-        - name: statefulset-nfs
+        - name: statefulset-qumulo
           image: mcr.microsoft.com/oss/nginx/nginx:1.19.5
           command:
             - "/bin/bash"
@@ -34,7 +34,7 @@ spec:
     - metadata:
         name: persistent-storage
         annotations:
-          volume.beta.kubernetes.io/storage-class: nfs-csi
+          volume.beta.kubernetes.io/storage-class: qumulo-csi
       spec:
         accessModes: ["ReadWriteOnce"]
         resources:
