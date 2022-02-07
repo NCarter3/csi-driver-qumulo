@@ -2,34 +2,34 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: pvc-deployment-nfs
+  name: pvc-deployment-qumulo
 spec:
   accessModes:
     - ReadWriteMany  # In this example, multiple Pods consume the same PVC.
   resources:
     requests:
       storage: 10Gi
-  storageClassName: nfs-csi
+  storageClassName: cluster1
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: deployment-nfs
+  name: deployment-qumulo
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: deployment-nfs
+      name: deployment-qumulo
   template:
     metadata:
-      name: deployment-nfs
+      name: deployment-qumulo
       labels:
-        name: deployment-nfs
+        name: deployment-qumulo
     spec:
       nodeSelector:
         "kubernetes.io/os": linux
       containers:
-        - name: deployment-nfs
+        - name: deployment-qumulo
           image: mcr.microsoft.com/oss/nginx/nginx:1.19.5
           command:
             - "/bin/bash"
@@ -41,4 +41,4 @@ spec:
       volumes:
         - name: nfs
           persistentVolumeClaim:
-            claimName: pvc-deployment-nfs
+            claimName: pvc-deployment-qumulo
