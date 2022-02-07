@@ -37,6 +37,7 @@ The configured username must have the following privileges to operate:
 * Look up on `storeRealPath`
 * Directory creation in `storeRealPath`
 * Creating and modifying quotas (PRIVILEGE_QUOTA_READ)
+* Reading NFS exports (PRIVILEGE_NFS_EXPORT_READ)
 * TreeDelete of volume directories (PRIVILEGE_FS_DELETE_TREE_WRITE)
 
 The `admin` user has all these rights, or you can use RBAC on the cluster to use another user.
