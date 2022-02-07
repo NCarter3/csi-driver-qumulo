@@ -381,7 +381,6 @@ func TestCreateVolumeHappyPathDifferentExport(t *testing.T) {
 	assert.Equal(t, quotaLimit, uint64(1024*1024*1024))
 }
 
-
 /*  _____                            ___     __    _
  * | ____|_  ___ __   __ _ _ __   __| \ \   / /__ | |_   _ _ __ ___   ___
  * |  _| \ \/ / '_ \ / _` | '_ \ / _` |\ \ / / _ \| | | | | '_ ` _ \ / _ \
@@ -674,9 +673,9 @@ func TestValidateVolumeCapabilities(t *testing.T) {
 			expectedErr: status.Error(codes.InvalidArgument, "Volume ID missing in request"),
 		},
 		{
-			desc:        "Volume capabilities missing",
-			req:         &csi.ValidateVolumeCapabilitiesRequest{VolumeId: testVolumeID},
-			resp:        nil,
+			desc: "Volume capabilities missing",
+			req:  &csi.ValidateVolumeCapabilitiesRequest{VolumeId: testVolumeID},
+			resp: nil,
 			expectedErr: status.Error(
 				codes.InvalidArgument,
 				"Volume capabilities missing in request",
@@ -1133,7 +1132,7 @@ func TestNewCreateParams(t *testing.T) {
 			},
 			expectErr: nil,
 			expectRet: &CreateParams{
-				server:         "somserver",
+				server:          "somserver",
 				restPort:        8000,
 				storeRealPath:   "/a/b/c",
 				storeExportPath: "/d/e/f",

@@ -565,9 +565,9 @@ func (self *Connection) GetVersionInfo() (versionInfo QumuloVersionInfo, err err
  */
 
 type ExportResponse struct {
-	Id           string `json:"id"`
-	ExportPath   string `json:"export_path"`
-	FsPath       string `json:"fs_path"`
+	Id         string `json:"id"`
+	ExportPath string `json:"export_path"`
+	FsPath     string `json:"fs_path"`
 }
 
 func (self *Connection) ExportGet(id string) (export ExportResponse, err error) {
@@ -592,14 +592,14 @@ func (self *Connection) ExportCreate(
 	uri := "/v2/nfs/exports/"
 
 	json_data := fmt.Sprintf(
-		"{\"export_path\": %q, \"fs_path\": %q, \"description\": \"\", " +
-		"\"restrictions\": [{" +
-		"\"read_only\": false, " +
-		"\"require_privileged_port\": false, " +
-		"\"host_restrictions\": [], " +
-		"\"user_mapping\": \"NFS_MAP_NONE\", " +
-		"\"map_to_user\": {\"id_type\": \"LOCAL_USER\", \"id_value\": \"0\"}}]" +
-		"}",
+		"{\"export_path\": %q, \"fs_path\": %q, \"description\": \"\", "+
+			"\"restrictions\": [{"+
+			"\"read_only\": false, "+
+			"\"require_privileged_port\": false, "+
+			"\"host_restrictions\": [], "+
+			"\"user_mapping\": \"NFS_MAP_NONE\", "+
+			"\"map_to_user\": {\"id_type\": \"LOCAL_USER\", \"id_value\": \"0\"}}]"+
+			"}",
 		exportPath,
 		fsPath,
 	)
