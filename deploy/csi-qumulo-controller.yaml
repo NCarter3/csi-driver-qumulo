@@ -5,7 +5,7 @@ metadata:
   name: csi-qumulo-controller
   namespace: kube-system
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: csi-qumulo-controller
@@ -84,7 +84,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: qumulo
-          image: qumuloplugin:latest
+          image: docker.io/scotturban/qumuloplugin:v1.0.0
           securityContext:
             privileged: true
             capabilities:
