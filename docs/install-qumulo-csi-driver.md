@@ -3,5 +3,6 @@
  - [install CSI driver master version](./install-csi-driver-master.md)
 
 <!---
- - [install CSI driver v3.0.0 version](./install-csi-driver-v3.0.0.md)
+Not yet ready as we're not branched.
+ - [install CSI driver v1.0.0 version](./install-csi-driver-v1.0.0.md)
 -->
