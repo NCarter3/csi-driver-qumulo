@@ -33,7 +33,7 @@ if [ $ver != "master" ]; then
   repo="$repo/$ver"
 fi
 
-echo "Installing Qumulo CSI driver, version: $ver ..."
+echo "Installing Qumulo CSI driver, version: $ver, repo: $repo ..."
 kubectl apply -f $repo/rbac-csi-qumulo-controller.yaml
 kubectl apply -f $repo/csi-qumulo-driverinfo.yaml
 kubectl apply -f $repo/csi-qumulo-controller.yaml

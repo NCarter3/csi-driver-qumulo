@@ -33,7 +33,7 @@ if [ $ver != "master" ]; then
   repo="$repo/$ver"
 fi
 
-echo "Uninstalling Qumulo driver, version: $ver ..."
+echo "Uninstalling Qumulo driver, version: $ver, repo: $repo ..."
 kubectl delete -f $repo/csi-qumulo-controller.yaml --ignore-not-found
 kubectl delete -f $repo/csi-qumulo-node.yaml --ignore-not-found
 kubectl delete -f $repo/csi-qumulo-driverinfo.yaml --ignore-not-found
