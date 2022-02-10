@@ -4,7 +4,7 @@
  - Clone repo
 ```console
 $ mkdir -p $GOPATH/src/github.com
-$ git clone https://github.com/scotturban/csi-driver-qumulo $GOPATH/src/github.com/csi-driver-qumulo
+$ git clone https://github.com/ScottUrban/csi-driver-qumulo $GOPATH/src/github.com/csi-driver-qumulo
 ```
 
  - Build CSI driver

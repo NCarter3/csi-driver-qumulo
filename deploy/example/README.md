@@ -29,7 +29,7 @@ Please refer to [driver parameters](../../docs/driver-parameters.md) for more de
 
   - Get configuration
     ```bash
-    wget https://raw.githubusercontent.com/scotturban/csi-driver-qumulo/master/deploy/example/storageclass-qumulo.yaml
+    wget https://raw.githubusercontent.com/ScottUrban/csi-driver-qumulo/master/deploy/example/storageclass-qumulo.yaml
     ```
 
   - Edit the configuration for your Qumulo cluster
@@ -48,7 +48,7 @@ kubectl create -f storageclass-qumulo.yaml
 
   - Get configuration
 ```
-wget https://raw.githubusercontent.com/scotturban/csi-driver-qumulo/master/deploy/example/dynamic-pvc.yaml
+wget https://raw.githubusercontent.com/ScottUrban/csi-driver-qumulo/master/deploy/example/dynamic-pvc.yaml
 ```
 
   - Edit the configuration
@@ -95,7 +95,7 @@ spec:
 
   - Get configuration
     ```bash
-    wget https://raw.githubusercontent.com/scotturban/csi-driver-qumulo/master/deploy/example/static-pv.yaml
+    wget https://raw.githubusercontent.com/ScottUrban/csi-driver-qumulo/master/deploy/example/static-pv.yaml
     ```
 
   -  Modify the configuration
@@ -114,7 +114,7 @@ spec:
 
   -  Get configuration
      ```
-     wget https://raw.githubusercontent.com/scotturban/csi-driver-qumulo/master/deploy/example/static-pvc.yaml
+     wget https://raw.githubusercontent.com/ScottUrban/csi-driver-qumulo/master/deploy/example/static-pvc.yaml
      ```
 
   -  Modify the configuration
