@@ -21,11 +21,10 @@ This is a repository for [Qumulo](https://qumulo.com/) [CSI](https://kubernetes-
 ### Driver parameters
 Please refer to [`qumulo.csi.k8s.io` driver parameters](./docs/driver-parameters.md)
 
-*TODO below here*
-
 ### Examples
  - [Basic usage](./deploy/example/README.md)
- - [fsGroupPolicy](./deploy/example/fsgroup)
+
+*TODO below here*
 
 ### Troubleshooting
  - [CSI driver troubleshooting guide](./docs/csi-debug.md) 

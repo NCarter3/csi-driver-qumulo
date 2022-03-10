@@ -38,6 +38,9 @@ import (
 // o GetCapacity
 // o add copyright to all files
 // o cache connections? 1 user at a time - could use auth file too
+// o look at fsGroupPolicy
+//   - docs/examples removed circa 3/10
+//   - default is none, we probably don't want it, maybe explicit?
 
 type ControllerServer struct {
 	Driver *Driver
