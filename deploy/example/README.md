@@ -25,6 +25,12 @@ Please refer to [driver parameters](../../docs/driver-parameters.md) for more de
 % kubectl create secret generic cluster1-login --type="kubernetes.io/basic-auth" --from-literal=username=bill --from-literal=password=SuperSecret --namespace=kube-system
 ```
 
+- Give the driver access to the secrets, e.g.:
+```
+% kubectl create role access-secrets --verb=get,list,watch,update,create --resource=secrets --namespace kube-system
+ % kubectl create rolebinding --role=access-secrets default-to-secrets --serviceaccount=kube-system:csi-qumulo-controller-sa --namespace kube-system
+```
+
 - Create a `StorageClass`
 
   - Get configuration
