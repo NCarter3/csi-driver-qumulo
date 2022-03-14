@@ -14,7 +14,10 @@ curl -skSL https://raw.githubusercontent.com/scotturban/csi-driver-qumulo/master
 ```console
 git clone https://github.com/scotturban/csi-driver-qumulo.git
 cd csi-driver-qumulo
-./deploy/install-driver.sh master local
+deploy/install-driver.sh master local
+# or 
+deploy/install-driver.bat master local
+
 ```
 
 - check pods status:
@@ -33,7 +36,15 @@ NAME                    READY   STATUS    RESTARTS   AGE     IP             NODE
 csi-qumulo-node-84lvs   3/3     Running   0          5h29m   192.168.49.2   minikube   <none>           <none>
 ```
 
-- clean up Qumulo CSI driver
+- clean up Qumulo CSI driver (remote)
 ```console
 curl -skSL https://raw.githubusercontent.com/scotturban/csi-driver-qumulo/master/deploy/uninstall-driver.sh | bash -s master --
 ```
+
+- clean up Qumulo CSI driver (local)
+```
+deploy/install-driver.sh master local
+# or 
+deploy/install-driver.bat master local
+```
+
