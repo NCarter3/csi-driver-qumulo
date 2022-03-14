@@ -16,7 +16,7 @@ This is a repository for [Qumulo](https://qumulo.com/) [CSI](https://kubernetes-
 
 ### Install driver on a Kubernetes cluster
  - install by [kubectl](./docs/install-qumulo-csi-driver.md)
- - install by [helm charts](./charts)
+ - install by [helm charts](./charts) (NOTE: these docs have not been updated yet)
 
 ### Driver parameters
 Please refer to [`qumulo.csi.k8s.io` driver parameters](./docs/driver-parameters.md)

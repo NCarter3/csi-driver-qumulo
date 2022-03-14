@@ -6,7 +6,6 @@ metadata:
 provisioner: qumulo.csi.k8s.io
 parameters:
   server: 10.116.10.177
-  restPort: "18154"
   storeRealPath: "/regions/4234/volumes"
   storeExportPath: "/some/export"
   csi.storage.k8s.io/provisioner-secret-name: cluster1-login
