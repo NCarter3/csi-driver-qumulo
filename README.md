@@ -5,7 +5,7 @@
 
 ### Overview
 
-This is a repository for [Qumulo](https://qumulo.com/) [CSI](https://kubernetes-csi.github.io/docs/) driver, csi plugin name: `qumulo.csi.k8s.io`. This driver requires an existing Qumulo cluster configured with NFSv3 or NFSv4 exports. It support static provisioning with pre-existing exports. It supports dynamic provisioning of Persistent Volumes via Persistent Volume Claims by creating sub directories and quotas as needed.
+This is a repository for [Qumulo](https://qumulo.com/) [CSI](https://kubernetes-csi.github.io/docs/) driver, csi plugin name: `qumulo.csi.k8s.io`. This driver requires an existing Qumulo cluster configured with NFSv3 or NFSv4 exports. It supports static provisioning with pre-existing exports. It supports dynamic provisioning of Persistent Volumes via Persistent Volume Claims by creating sub directories and quotas as needed.
 
 ### Project status: Beta
 
