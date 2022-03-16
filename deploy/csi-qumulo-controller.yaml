@@ -84,7 +84,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: qumulo
-          image: docker.io/scotturban/qumuloplugin:v1.0.0
+          image: public.ecr.aws/w2q8d7u6/csi-driver-qumulo:latest
           securityContext:
             privileged: true
             capabilities:
